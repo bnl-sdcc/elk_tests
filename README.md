@@ -1,2 +1,2 @@
 # elk_tests
-tests with ELK
+a copy of config files for first tests with ELK
