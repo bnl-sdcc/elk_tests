@@ -17,3 +17,12 @@ CONDOR_SCHEDLOG_TIMESTAMP %{DATE_US} %{TIME}
 # This is called look-behind in regex land
 
 CONDOR_SCHEDLOG_JOB_STARTED (?<=switching to job) %{NUMBER:jobid}
+
+# -----------------------------------------------------------------------------
+# source: StartLog
+# target: a line with string "Received job ClassAd update from starter". Fake query, just for testing.
+# example of line: 
+#   10/24/18 23:08:15.369 (pid:2747) slot1_3: Received job ClassAd update from starter.
+
+CLASSAD Received job ClassAd update from starter
+
