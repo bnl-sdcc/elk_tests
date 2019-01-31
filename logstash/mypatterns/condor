@@ -26,3 +26,18 @@ CONDOR_SCHEDLOG_JOB_STARTED (?<=switching to job) %{NUMBER:jobid}
 
 CLASSAD Received job ClassAd update from starter
 
+
+# -----------------------------------------------------------------------------
+# source: StarterLog.slotXYZ
+# target: the JobID of a new starting job
+# example of line:
+#   06/22/18 01:53:23.099 ** PID = 17089
+STARTERLOG_NEW_JOBID (?<=PID \= )%{NUMBER:starter_jobid}
+
+# -----------------------------------------------------------------------------
+# source: StarterLog.slotXYZ
+# target: the JobID of a finished job
+# example of line:
+#   06/22/18 02:51:09.687 **** condor_starter (condor_STARTER) pid 17089 EXITING WITH STATUS 0
+STARTERLOG_FINISHED_JOBID (?<=condor_starter \(condor_STARTER\) pid )%{NUMBER:starter_jobid}
+
