@@ -1,0 +1,6 @@
+# /etc/logstash/patterns
+
+STARTERLOG_NEW_JOBID (?<=PID \= )%{NUMBER:starter_jobid}
+STARTERLOG_FINISHED_JOBID (?<=condor_starter \(condor_STARTER\) pid )%{NUMBER:starter_jobid}
+
+

@@ -1,0 +1,20 @@
+# /etc/logstash/conf.d
+
+
+input { 
+    beats { 
+        codec => json 
+        port => 5005
+        ssl => true 
+        ssl_certificate => "/etc/logstash/certs/lumberjack.cert" 
+        ssl_key => "/etc/logstash/certs/lumberjack.key"
+    }
+}
+
+output {
+    elasticsearch {
+        hosts => [ "monitor01.sdcc.bnl.local:9210" ]
+    index => "jcaballero_test"
+    } 
+}
+

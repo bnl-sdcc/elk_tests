@@ -1,0 +1,10 @@
+# /etc/filebeat
+
+filebeat.inputs:
+- type: log
+  paths:
+    - /var/log/condor/phenix/StarterLog.slot1
+output.logstash:
+  hosts: ["localhost:5044"]
+
+
