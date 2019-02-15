@@ -1,6 +1,6 @@
-# /etc/logstash/patterns
+STARTERLOG_NEW_PID (?<=PID \= )%{NUMBER}
+STARTERLOG_FINISHED_PID (?<=condor_starter \(condor_STARTER\) pid )%{NUMBER}
+STARTERLOG_SUBMIT_HOST (?<=Submitting machine is \")%{HOSTNAME}
+STARTERLOG_USERNAME (?<=Running job as user )%{WORD}
 
-STARTERLOG_NEW_JOBID (?<=PID \= )%{NUMBER:starter_jobid}
-STARTERLOG_FINISHED_JOBID (?<=condor_starter \(condor_STARTER\) pid )%{NUMBER:starter_jobid}
-
-
+#STARTERLOG_NEW_JOBID (?<=Starting a VANILLA universe job with ID: )%{NUMBER}

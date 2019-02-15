@@ -1,5 +1,3 @@
-# /etc/logstash/conf.d
-
 input {
     beats {
         port => "5044"
@@ -7,27 +5,75 @@ input {
 }
 
 filter {
+
     grok {
-    match => { "message" => "%{STARTERLOG_NEW_JOBID:starterlog_new_jobid}"}
-    add_field => { "event" => "starting" }
-    break_on_match => false
-    patterns_dir => ["/etc/logstash/patterns/starterlog"]
-    }
+        add_tag => [ "matched", "starting" ]
+        match => { "message" => "%{STARTERLOG_NEW_PID:starterlog_new_pid}" }
+        break_on_match => false 
+        patterns_dir => ["./patterns/"]
+    }   
     grok {
-    match => { "message" => "%{STARTERLOG_FINISHED_JOBID:starterlog_finished_jobid}"}
-    add_field => { "event" => "finished" }
-    break_on_match => false
-    patterns_dir => ["/etc/logstash/patterns/starterlog"]
+        add_tag => [ "matched", "submithost" ]
+        match => { "message" => "%{STARTERLOG_SUBMIT_HOST:starterlog_submit_host}" }
+        break_on_match => false 
+        patterns_dir => ["./patterns/"]
+    }   
+    grok {
+        add_tag => [ "matched", "username" ]
+        match => { "message" => "%{STARTERLOG_USERNAME:starterlog_username}" }
+        break_on_match => false 
+        patterns_dir => ["./patterns/"]
+    }   
+    grok {
+        add_tag => [ "matched", "finished" ]
+        match => { "message" => "%{STARTERLOG_FINISHED_PID:starterlog_finished_pid}" }
+        #match => { "message" => "%{STARTERLOG_FINISHED_PID}" }
+        break_on_match => false 
+        patterns_dir => ["./patterns/"]
+    }   
+
+
+    if "matched" not in [tags] {
+        drop { } 
+    }   
+
+    if "starting" in [tags] {
+            ruby { code => '@@pid = event.get("starterlog_new_pid")' }
+    } else {
+            ruby { code => 'event.set("pid", @@pid)' }
+            if "submithost" in [tags] {
+                    ruby { code => '@@submithost = event.get("starterlog_submit_host")' }
+            } else {
+                    ruby { code => 'event.set("submithost", @@submithost)' }
+                    if "username" in [tags] {
+                            ruby { code => '@@username = event.get("starterlog_username")' }
+                    } else {
+                            ruby { code => 'event.set("username", @@username)' }
+                    }
+            }
     }
+
+
+    if "finished" not in [tags] {
+        drop { }
+    }
+
+
 }
+
+
+#output {
+#    stdout { codec => rubydebug }
+#}
 
 output { 
     lumberjack { 
         codec => json 
         hosts => "monitor04.sdcc.bnl.local" 
         ssl_certificate => "/etc/logstash/certs/lumberjack.cert" 
-        #port => 5555
-        port => 5005
+        ###port => 5005
+        port => 5555
     }   
 }
+
 
