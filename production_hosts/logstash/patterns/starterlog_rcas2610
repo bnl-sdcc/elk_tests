@@ -2,5 +2,5 @@ STARTERLOG_NEW_PID (?<=PID \= )%{NUMBER}
 STARTERLOG_FINISHED_PID (?<=condor_starter \(condor_STARTER\) pid )%{NUMBER}
 STARTERLOG_SUBMIT_HOST (?<=Submitting machine is \")%{HOSTNAME}
 STARTERLOG_USERNAME (?<=Running job as user )%{WORD}
-
+STARTERLOG_END_JOB %{GREEDYDATA}(status=)%{NUMBER:status}( reason=)%{NUMBER:reason}
 #STARTERLOG_NEW_JOBID (?<=Starting a VANILLA universe job with ID: )%{NUMBER}

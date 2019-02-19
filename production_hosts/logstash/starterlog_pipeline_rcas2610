@@ -26,8 +26,8 @@ filter {
     }   
     grok {
         add_tag => [ "matched", "finished" ]
-        match => { "message" => "%{STARTERLOG_FINISHED_PID:starterlog_finished_pid}" }
-        #match => { "message" => "%{STARTERLOG_FINISHED_PID}" }
+        #match => { "message" => "%{STARTERLOG_FINISHED_PID:starterlog_finished_pid}" }
+        match => { "message" => "%{STARTERLOG_END_JOB}"}
         break_on_match => false 
         patterns_dir => ["./patterns/"]
     }   
