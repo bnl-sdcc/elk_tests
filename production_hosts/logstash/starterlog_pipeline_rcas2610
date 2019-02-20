@@ -8,7 +8,7 @@ filter {
 
     grok {
         add_tag => [ "matched", "starting" ]
-        match => { "message" => "%{STARTERLOG_NEW_PID:starterlog_new_pid}" }
+        match => { "message" => "%{STARTERLOG_TIMESTAMP:starttime} (?=\*\* PID =)" }
         break_on_match => false 
         patterns_dir => ["./patterns/"]
     }   
@@ -25,9 +25,15 @@ filter {
         patterns_dir => ["./patterns/"]
     }   
     grok {
+        add_tag => [ "matched", "jobid" ]
+        match => { "message" => "%{STARTERLOG_NEW_JOBID:jobid}" }
+        break_on_match => false 
+        patterns_dir => ["./patterns/"]
+    }   
+    grok {
         add_tag => [ "matched", "finished" ]
-        #match => { "message" => "%{STARTERLOG_FINISHED_PID:starterlog_finished_pid}" }
-        match => { "message" => "%{STARTERLOG_END_JOB}"}
+        #match => { "message" => "%{GREEDYDATA}(status=)%{NUMBER:status}( reason=)%{NUMBER:reason}" }
+    match => { "message" => "%{STARTERLOG_END_JOB}"}
         break_on_match => false 
         patterns_dir => ["./patterns/"]
     }   
@@ -38,9 +44,9 @@ filter {
     }   
 
     if "starting" in [tags] {
-            ruby { code => '@@pid = event.get("starterlog_new_pid")' }
+            ruby { code => '@@starttime = event.get("starttime")' }
     } else {
-            ruby { code => 'event.set("pid", @@pid)' }
+            ruby { code => 'event.set("starttime", @@starttime)' }
             if "submithost" in [tags] {
                     ruby { code => '@@submithost = event.get("starterlog_submit_host")' }
             } else {
@@ -49,6 +55,11 @@ filter {
                             ruby { code => '@@username = event.get("starterlog_username")' }
                     } else {
                             ruby { code => 'event.set("username", @@username)' }
+                            if "jobid" in [tags] {
+                                    ruby { code => '@@jobid = event.get("jobid")' }
+                            } else {
+                                    ruby { code => 'event.set("jobid", @@jobid)' }
+                            }
                     }
             }
     }
@@ -75,5 +86,4 @@ output {
         port => 5555
     }   
 }
-
 
