@@ -43,6 +43,7 @@ filter {
         drop { } 
     }   
 
+
     if "starting" in [tags] {
             ruby { code => '@@starttime = event.get("starttime")' }
     } else {
@@ -51,14 +52,14 @@ filter {
                     ruby { code => '@@submithost = event.get("starterlog_submit_host")' }
             } else {
                     ruby { code => 'event.set("submithost", @@submithost)' }
-                    if "username" in [tags] {
-                            ruby { code => '@@username = event.get("starterlog_username")' }
+                    if "jobid" in [tags] {
+                            ruby { code => '@@jobid = event.get("jobid")' }
                     } else {
-                            ruby { code => 'event.set("username", @@username)' }
-                            if "jobid" in [tags] {
-                                    ruby { code => '@@jobid = event.get("jobid")' }
+                            ruby { code => 'event.set("jobid", @@jobid)' }
+                            if "username" in [tags] {
+                                    ruby { code => '@@username = event.get("starterlog_username")' }
                             } else {
-                                    ruby { code => 'event.set("jobid", @@jobid)' }
+                                    ruby { code => 'event.set("username", @@username)' }
                             }
                     }
             }
@@ -70,7 +71,13 @@ filter {
     }
 
 
+    prune {
+        interpolate => true
+        whitelist_names => ["jobid", "username", "submithost", "starttime", "endtime", "status", "reason"]
+    }
+
 }
+
 
 
 #output {
