@@ -67,13 +67,19 @@ filter {
 
 
     if "finished" not in [tags] {
-        drop { }
+        if "username" not in [tags] {
+            drop { }
+        }
+    }
+
+
+    mutate {
+        add_field => { "executionhost" => "%{host[name]}" }
     }
 
 
     prune {
-        interpolate => true
-        whitelist_names => ["jobid", "username", "submithost", "starttime", "endtime", "status", "reason"]
+        whitelist_names => ["jobid", "username", "submithost", "starttime", "endtime", "status", "reason", "executionhost"]
     }
 
 }
