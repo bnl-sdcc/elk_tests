@@ -20,7 +20,7 @@ filter {
     }   
     grok {
         add_tag => [ "matched", "username" ]
-        match => { "message" => "%{STARTERLOG_USERNAME:starterlog_username}" }
+        match => { "message" => "%{STARTERLOG_USERNAME:username}" }
         break_on_match => false 
         patterns_dir => ["./patterns/"]
     }   
@@ -57,7 +57,7 @@ filter {
                     } else {
                             ruby { code => 'event.set("jobid", @@jobid)' }
                             if "username" in [tags] {
-                                    ruby { code => '@@username = event.get("starterlog_username")' }
+                                    ruby { code => '@@username = event.get("username")' }
                             } else {
                                     ruby { code => 'event.set("username", @@username)' }
                             }
