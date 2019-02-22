@@ -1,0 +1,93 @@
+input {
+    file{
+        path => ['/root/tmp/elk_tests/StarterLog.slot1.shorter1']
+        mode => 'read'   
+        tags => ["file1"]
+    }
+}
+
+filter {
+if "file1" in [tags] {
+
+    grok {
+        add_tag => [ "matched", "starting" ]
+        match => { "message" => "%{STARTERLOG_TIMESTAMP:starttime} (?=\*\* PID =)" }
+        break_on_match => false 
+        patterns_dir => ["./patterns/"]
+    }   
+    grok {
+        add_tag => [ "matched", "submithost" ]
+        match => { "message" => "%{STARTERLOG_SUBMIT_HOST:starterlog_submit_host}" }
+        break_on_match => false 
+        patterns_dir => ["./patterns/"]
+    }   
+    grok {
+        add_tag => [ "matched", "username" ]
+        match => { "message" => "%{STARTERLOG_USERNAME:username}" }
+        break_on_match => false 
+        patterns_dir => ["./patterns/"]
+    }   
+    grok {
+        add_tag => [ "matched", "jobid" ]
+        match => { "message" => "%{STARTERLOG_NEW_JOBID:jobid}" }
+        break_on_match => false 
+        patterns_dir => ["./patterns/"]
+    }   
+    grok {
+        add_tag => [ "matched", "finished" ]
+        #match => { "message" => "%{GREEDYDATA}(status=)%{NUMBER:status}( reason=)%{NUMBER:reason}" }
+        match => { "message" => "%{STARTERLOG_END_JOB}"}
+        break_on_match => false 
+        patterns_dir => ["./patterns/"]
+    }   
+
+
+    if "matched" not in [tags] {
+        drop { } 
+    }   
+
+
+
+    if "starting" in [tags] {
+            ruby { code => '@@starttime = event.get("starttime")' }
+    } else {
+            ruby { code => 'event.set("starttime", @@starttime)' }
+            if "submithost" in [tags] {
+                    ruby { code => '@@submithost = event.get("starterlog_submit_host")' }
+            } else {
+                    ruby { code => 'event.set("submithost", @@submithost)' }
+                    if "jobid" in [tags] {
+                            ruby { code => '@@jobid = event.get("jobid")' }
+                    } else {
+                            ruby { code => 'event.set("jobid", @@jobid)' }
+                            if "username" in [tags] {
+                                    ruby { code => '@@username = event.get("username")' }
+                            } else {
+                                    ruby { code => 'event.set("username", @@username)' }
+                            }
+                    }
+            }
+    }
+
+
+
+    if "finished" not in [tags] {
+        drop { }
+    }
+
+
+    prune {
+        interpolate => true
+        whitelist_names => ["jobid", "username", "submithost", "starttime", "endtime", "status", "reason"]
+    }
+
+}
+}
+
+
+
+output {
+    stdout { codec => rubydebug }
+}
+
+

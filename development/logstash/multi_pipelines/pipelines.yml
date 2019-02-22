@@ -1,0 +1,9 @@
+# pipelines.yml
+
+- pipeline.id: pipeline-1
+  path.config: "/root/tmp/elk_tests/pipeline1"
+  pipeline.workers: 1
+- pipeline.id: pipeline-2
+  path.config: "/root/tmp/elk_tests/pipeline2"
+  pipeline.workers: 1
+
