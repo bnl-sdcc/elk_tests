@@ -7,6 +7,10 @@ curl -X PUT "monitor01.sdcc.bnl.local:9210/jcaballero_test/_mapping/logs" -H 'Co
       "type":     "text",
       "fielddata": true
     },
+    "executionhost": { 
+      "type":     "text",
+      "fielddata": true
+    },
     "submithost": { 
       "type":     "text",
       "fielddata": true
