@@ -1,0 +1,39 @@
+
+
+curl -X PUT "monitor01.sdcc.bnl.local:9210/jcaballero_test/_mapping/logs" -H 'Content-Type: application/json' -d'
+{
+  "properties": {
+    "username": { 
+      "type":     "text",
+      "fielddata": true
+    },
+    "submithost": { 
+      "type":     "text",
+      "fielddata": true
+    },
+    "starttime": { 
+      "type":     "text",
+      "fielddata": true
+    },
+    "endtime": { 
+      "type":     "text",
+      "fielddata": true
+    },
+    "jobid": { 
+      "type":     "text",
+      "fielddata": true
+    },
+    "status": { 
+      "type":     "text",
+      "fielddata": true
+    },
+    "reason": { 
+      "type":     "text",
+      "fielddata": true
+    }
+  }
+}
+'
+
+
+
