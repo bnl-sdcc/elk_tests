@@ -22,7 +22,10 @@ filter {
 output {
     elasticsearch {
         hosts => [ "monitor01.sdcc.bnl.local:9210" ]
-    index => "jcaballero_test"
+        index => "jcaballero_test"
+        document_id => "%{executionhost}_%{jobid}"
+        action => "update"
+        doc_as_upsert => true
     } 
 }
 
