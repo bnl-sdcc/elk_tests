@@ -1,0 +1,54 @@
+input {
+    beats {
+        port => "5044"
+    }
+}
+
+filter {
+
+    grok {
+        pattern_definitions => { "START_TIMESTAMP" => "%{DATE_US} %{TIME}" }
+        match => { "message" => [
+            '^%{START_TIMESTAMP:starttime} \*\* PID = ',
+            '^%{START_TIMESTAMP} Submitting machine is "%{HOSTNAME:submithost}"',
+            '^%{START_TIMESTAMP} Starting a VANILLA universe job with ID: %{NUMBER:jobid}',
+            '^%{START_TIMESTAMP} Running job as user %{WORD:user}',
+            '^%{START_TIMESTAMP:endtime} Notifying exit status=%{NUMBER:status} reason=%{NUMBER:reason}'
+        ] }
+    }
+
+    if [starttime]       { ruby { code => '@@the_starttime  = event.get("starttime");  event.cancel' } }
+    else if [submithost] { ruby { code => '@@the_submithost = event.get("submithost"); event.cancel' } }
+    else if [jobid]      { ruby { code => '@@the_jobid      = event.get("jobid");      event.cancel' } }
+    else if [user]       { ruby { code => '@@the_user       = event.get("user"); event.set("starttime", @@the_starttime); event.set("jobid", @@the_jobid); event.set("submithost", @@the_submithost); event.set("user", @@the_user)'}}
+    else if [status]     { ruby { code => 'event.set("starttime", @@the_starttime); event.set("jobid", @@the_jobid); event.set("submithost", @@the_submithost); event.set("user", @@the_user)' } }
+    else { drop{} }
+
+
+    mutate {
+        add_field => { "executionhost" => "%{host[name]}" }
+    }
+
+
+    prune {
+        whitelist_names => ["jobid", "username", "submithost", "starttime", "endtime", "status", "reason", "executionhost"]
+    }
+
+}
+
+
+
+#output {
+#    stdout { codec => rubydebug }
+#}
+
+output { 
+    lumberjack { 
+        codec => json 
+        hosts => "monitor04.sdcc.bnl.local" 
+        ssl_certificate => "/etc/logstash/certs/lumberjack.cert" 
+        ###port => 5005
+        port => 5555
+    }   
+}
+
