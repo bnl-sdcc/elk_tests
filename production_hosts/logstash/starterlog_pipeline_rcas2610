@@ -27,20 +27,17 @@ filter {
              @@starttime = event.get("starttime")   
              @@starttimebackup = event.get("starttime")   
 
-             if defined?(@@hasuser)
-                 if @@hasstatus == true
-                     event.cancel
-                 else
+             if defined?(@@hasuser) && @@hasstatus == false
                      event.set("starttime", @@starttimebackup)
                      event.set("jobid", @@jobid)
                      event.set("submithost", @@submithost)
                      event.set("user", @@user)
                      event.set("status", "CRASHED")
-                 end
              else
                  event.cancel
              end
-               
+
+ 
         elsif event.get("submithost")
             @@submithost = event.get("submithost")          
             event.cancel
