@@ -6,80 +6,79 @@ input {
 
 filter {
 
-    grok {
-        add_tag => [ "matched", "starting" ]
-        match => { "message" => "%{STARTERLOG_TIMESTAMP:starttime} (?=\*\* PID =)" }
-        break_on_match => false 
-        patterns_dir => ["./patterns/"]
-    }   
-    grok {
-        add_tag => [ "matched", "submithost" ]
-        match => { "message" => "%{STARTERLOG_SUBMIT_HOST:starterlog_submit_host}" }
-        break_on_match => false 
-        patterns_dir => ["./patterns/"]
-    }   
-    grok {
-        add_tag => [ "matched", "username" ]
-        match => { "message" => "%{STARTERLOG_USERNAME:username}" }
-        break_on_match => false 
-        patterns_dir => ["./patterns/"]
-    }   
-    grok {
-        add_tag => [ "matched", "jobid" ]
-        match => { "message" => "%{STARTERLOG_NEW_JOBID:jobid}" }
-        break_on_match => false 
-        patterns_dir => ["./patterns/"]
-    }   
-    grok {
-        add_tag => [ "matched", "finished" ]
-        #match => { "message" => "%{GREEDYDATA}(status=)%{NUMBER:status}( reason=)%{NUMBER:reason}" }
-    match => { "message" => "%{STARTERLOG_END_JOB}"}
-        break_on_match => false 
-        patterns_dir => ["./patterns/"]
-    }   
 
-
-    if "matched" not in [tags] {
-        drop { } 
-    }   
-
-
-    if "starting" in [tags] {
-            ruby { code => '@@starttime = event.get("starttime")' }
-    } else {
-            ruby { code => 'event.set("starttime", @@starttime)' }
-            if "submithost" in [tags] {
-                    ruby { code => '@@submithost = event.get("starterlog_submit_host")' }
-            } else {
-                    ruby { code => 'event.set("submithost", @@submithost)' }
-                    if "jobid" in [tags] {
-                            ruby { code => '@@jobid = event.get("jobid")' }
-                    } else {
-                            ruby { code => 'event.set("jobid", @@jobid)' }
-                            if "username" in [tags] {
-                                    ruby { code => '@@username = event.get("username")' }
-                            } else {
-                                    ruby { code => 'event.set("username", @@username)' }
-                            }
-                    }
-            }
+   
+    grok {
+        pattern_definitions => { "START_TIMESTAMP" => "%{DATE_US} %{TIME}" }
+        match => { "message" => [
+            '^%{START_TIMESTAMP:starttime} \*\* PID = ',
+            '^%{START_TIMESTAMP} Submitting machine is "%{HOSTNAME:submithost}"',
+            '^%{START_TIMESTAMP} Starting a VANILLA universe job with ID: %{NUMBER:jobid}',
+            '^%{START_TIMESTAMP} Running job as user %{WORD:user}',
+            '^%{START_TIMESTAMP:endtime} Notifying exit status=%{NUMBER:status} reason=%{NUMBER:reason}'
+        ] }
     }
 
 
-    if "finished" not in [tags] {
-        if "username" not in [tags] {
-            drop { }
-        }
-    }
+    ruby { code => '
+
+        if event.get("starttime")
+
+             @@starttime = event.get("starttime")   
+             @@starttimebackup = event.get("starttime")   
+
+             if defined?(@@hasuser)
+                 if @@hasstatus == true
+                     event.cancel
+                 else
+                     event.set("starttime", @@starttimebackup)
+                     event.set("jobid", @@jobid)
+                     event.set("submithost", @@submithost)
+                     event.set("user", @@user)
+                     event.set("status", "CRASHED")
+                 end
+             else
+                 event.cancel
+             end
+               
+        elsif event.get("submithost")
+            @@submithost = event.get("submithost")          
+            event.cancel
+
+        elsif event.get("jobid")
+            @@jobid = event.get("jobid")
+            event.cancel
+
+        elsif event.get("user")
+            @@user = event.get("user")
+            event.set("starttime", @@starttime)
+            event.set("jobid", @@jobid)
+            event.set("submithost", @@submithost)
+            event.set("user", @@user)
+
+            @@hasuser = true
+            @@hasstatus = false
 
 
-    mutate {
-        add_field => { "executionhost" => "%{host[name]}" }
-    }
+        elsif event.get("status")
+            event.set("starttime", @@starttime)
+            event.set("jobid", @@jobid)
+            event.set("submithost", @@submithost)
+            event.set("user", @@user)
+
+            @@hasstatus = true
+
+        else
+            event.cancel
+        end
+
+    '} 
 
 
+
+    mutate { add_field => { "executionhost" => "%{host[name]}" } }
     prune {
-        whitelist_names => ["jobid", "username", "submithost", "starttime", "endtime", "status", "reason", "executionhost"]
+        whitelist_names => ["jobid", "user", "submithost", "starttime", "endtime", "status", "reason", "executionhost", "completed"]
     }
 
 }
