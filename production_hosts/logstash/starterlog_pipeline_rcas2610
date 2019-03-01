@@ -75,7 +75,7 @@ filter {
 
     mutate { add_field => { "executionhost" => "%{host[name]}" } }
     prune {
-        whitelist_names => ["jobid", "user", "submithost", "starttime", "endtime", "status", "reason", "executionhost", "completed"]
+        whitelist_names => ["jobid", "user", "submithost", "starttime", "endtime", "status", "reason", "executionhost"]
     }
 
 }
