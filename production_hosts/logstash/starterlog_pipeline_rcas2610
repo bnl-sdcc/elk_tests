@@ -6,8 +6,6 @@ input {
 
 filter {
 
-
-   
     grok {
         pattern_definitions => { "START_TIMESTAMP" => "%{DATE_US} %{TIME}" }
         match => { "message" => [
@@ -20,56 +18,74 @@ filter {
     }
 
 
+
+
+
+
     ruby { code => '
+
+        $source = event.get("source")
+
+        if ! defined?($starttime)
+                $starttime = Hash.new
+                $starttimebackup = Hash.new
+                $jobid = Hash.new
+                $submithost = Hash.new
+                $user = Hash.new
+                $hasuser = Hash.new
+                $hasstatus = Hash.new
+        end
+
+
 
         if event.get("starttime")
 
-             @@starttime = event.get("starttime")   
-             @@starttimebackup = event.get("starttime")   
+             $starttime[$source] = event.get("starttime")
+             $starttimebackup[$source] = event.get("starttime")
 
-             if defined?(@@hasuser) && @@hasstatus == false
-                     event.set("starttime", @@starttimebackup)
-                     event.set("jobid", @@jobid)
-                     event.set("submithost", @@submithost)
-                     event.set("user", @@user)
+             if defined?($hasuser[$source]) && $hasstatus[$source] == false
+                     event.set("starttime", $starttimebackup[$source])
+                     event.set("jobid", $jobid[$source])
+                     event.set("submithost", $submithost[$source])
+                     event.set("user", $user[$source])
                      event.set("status", "CRASHED")
              else
                  event.cancel
              end
 
- 
+
         elsif event.get("submithost")
-            @@submithost = event.get("submithost")          
+            $submithost[$source] = event.get("submithost")
             event.cancel
 
         elsif event.get("jobid")
-            @@jobid = event.get("jobid")
+            $jobid[$source] = event.get("jobid")
             event.cancel
 
         elsif event.get("user")
-            @@user = event.get("user")
-            event.set("starttime", @@starttime)
-            event.set("jobid", @@jobid)
-            event.set("submithost", @@submithost)
-            event.set("user", @@user)
+            $user[$source] = event.get("user")
+            event.set("starttime", $starttime[$source])
+            event.set("jobid", $jobid[$source])
+            event.set("submithost", $submithost[$source])
+            event.set("user", $user[$source])
 
-            @@hasuser = true
-            @@hasstatus = false
+            $hasuser[$source] = true
+            $hasstatus[$source] = false
 
 
         elsif event.get("status")
-            event.set("starttime", @@starttime)
-            event.set("jobid", @@jobid)
-            event.set("submithost", @@submithost)
-            event.set("user", @@user)
+            event.set("starttime", $starttime[$source])
+            event.set("jobid", $jobid[$source])
+            event.set("submithost", $submithost[$source])
+            event.set("user", $user[$source])
 
-            @@hasstatus = true
+            $hasstatus[$source] = true
 
         else
             event.cancel
         end
 
-    '} 
+    '}
 
 
 
@@ -86,13 +102,12 @@ filter {
 #    stdout { codec => rubydebug }
 #}
 
-output { 
-    lumberjack { 
-        codec => json 
-        hosts => "monitor04.sdcc.bnl.local" 
-        ssl_certificate => "/etc/logstash/certs/lumberjack.cert" 
+output {
+    lumberjack {
+        codec => json
+        hosts => "monitor04.sdcc.bnl.local"
+        ssl_certificate => "/etc/logstash/certs/lumberjack.cert"
         ###port => 5005
         port => 5555
-    }   
+    }
 }
-
