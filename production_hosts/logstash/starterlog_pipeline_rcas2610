@@ -17,41 +17,45 @@ filter {
         ] }
     }
 
-
-
-
-
-
     ruby { code => '
 
+        # log file name
+        # we will use it as key in several dictionaries
+        # to identify which line comes from each file and prevent mixing them
         $source = event.get("source")
-
+        
+        # Before anything else, we create the dictionaries (empty)
+        # to host all relevant variables
         if ! defined?($starttime)
-                $starttime = Hash.new
-                $starttimebackup = Hash.new
-                $jobid = Hash.new
-                $submithost = Hash.new
-                $user = Hash.new
-                $hasuser = Hash.new
-                $hasstatus = Hash.new
+            $starttime = Hash.new
+            $starttimebackup = Hash.new
+            $jobid = Hash.new
+            $submithost = Hash.new
+            $user = Hash.new
+            $hasuser = Hash.new
+            $hasstatus = Hash.new
         end
 
-
-
         if event.get("starttime")
+            
+            $starttime[$source] = event.get("starttime")
+            $starttimebackup[$source] = event.get("starttime")
 
-             $starttime[$source] = event.get("starttime")
-             $starttimebackup[$source] = event.get("starttime")
-
-             if defined?($hasuser[$source]) && $hasstatus[$source] == false
-                     event.set("starttime", $starttimebackup[$source])
-                     event.set("jobid", $jobid[$source])
-                     event.set("submithost", $submithost[$source])
-                     event.set("user", $user[$source])
-                     event.set("status", "CRASHED")
-             else
-                 event.cancel
-             end
+            if defined?($hasuser[$source]) && $hasstatus[$source] == false
+                # if we are here is because all of this is true:
+                #   -- we are in the line for a new job, so we are done processing previous one
+                #   -- there was an username associated to the previous job
+                #   -- there was no final job status associated to the previous job
+                # all of that means that the previous job crashed
+                event.set("starttime", $starttimebackup[$source])
+                event.set("jobid", $jobid[$source])
+                event.set("submithost", $submithost[$source])
+                event.set("user", $user[$source])
+                event.set("status", "CRASHED")
+                # we sent the event data to the output
+            else
+                event.cancel
+            end
 
 
         elsif event.get("submithost")
@@ -68,6 +72,7 @@ filter {
             event.set("jobid", $jobid[$source])
             event.set("submithost", $submithost[$source])
             event.set("user", $user[$source])
+            # we sent the event data to the output
 
             $hasuser[$source] = true
             $hasstatus[$source] = false
@@ -78,6 +83,7 @@ filter {
             event.set("jobid", $jobid[$source])
             event.set("submithost", $submithost[$source])
             event.set("user", $user[$source])
+            # we sent the event data to the output
 
             $hasstatus[$source] = true
 
@@ -88,8 +94,8 @@ filter {
     '}
 
 
-
     mutate { add_field => { "executionhost" => "%{host[name]}" } }
+
     prune {
         whitelist_names => ["jobid", "user", "submithost", "starttime", "endtime", "status", "reason", "executionhost"]
     }
