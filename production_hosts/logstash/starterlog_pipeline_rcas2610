@@ -38,6 +38,8 @@ filter {
 
         if event.get("starttime")
 
+            $starttime[$source] = event.get("starttime")
+
             if defined?($hasuser[$source]) && $hasstatus[$source] == false
                 # if we are here is because all of this is true:
                 #   -- we are in the line for a new job, so we are done processing previous one
@@ -54,8 +56,7 @@ filter {
                 event.cancel
             end
             
-            $starttime[$source] = event.get("starttime")
-            $starttimebackup[$source] = event.get("starttime")
+            $starttimebackup[$source] = $starttime[$source]
 
 
         elsif event.get("submithost")
