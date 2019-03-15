@@ -37,9 +37,6 @@ filter {
         end
 
         if event.get("starttime")
-            
-            $starttime[$source] = event.get("starttime")
-            $starttimebackup[$source] = event.get("starttime")
 
             if defined?($hasuser[$source]) && $hasstatus[$source] == false
                 # if we are here is because all of this is true:
@@ -56,6 +53,9 @@ filter {
             else
                 event.cancel
             end
+            
+            $starttime[$source] = event.get("starttime")
+            $starttimebackup[$source] = event.get("starttime")
 
 
         elsif event.get("submithost")
