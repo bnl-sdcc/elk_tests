@@ -17,16 +17,11 @@ filter {
         ] }
     }
 
-    ruby { code => '
+    ruby { 
 
-        # log file name
-        # we will use it as key in several dictionaries
-        # to identify which line comes from each file and prevent mixing them
-        $source = event.get("source")
-        
-        # Before anything else, we create the dictionaries (empty)
-        # to host all relevant variables
-        if ! defined?($starttime)
+        init => '
+            # Before anything else, we create the dictionaries (empty)
+            # to host all relevant variables
             $starttime = Hash.new
             $starttimebackup = Hash.new
             $jobid = Hash.new
@@ -34,65 +29,72 @@ filter {
             $user = Hash.new
             $hasuser = Hash.new
             $hasstatus = Hash.new
-        end
+        '
+        code => '
 
-        if event.get("starttime")
+            # log file name
+            # we will use it as key in several dictionaries
+            # to identify which line comes from each file and prevent mixing them
+            $source = event.get("source")
 
-            $starttime[$source] = event.get("starttime")
+            if event.get("starttime")
 
-            if defined?($hasuser[$source]) && $hasstatus[$source] == false
-                # if we are here is because all of this is true:
-                #   -- we are in the line for a new job, so we are done processing previous one
-                #   -- there was an username associated to the previous job
-                #   -- there was no final job status associated to the previous job
-                # all of that means that the previous job crashed
-                event.set("starttime", $starttimebackup[$source])
+                $starttime[$source] = event.get("starttime")
+
+                if defined?($hasuser[$source]) && $hasstatus[$source] == false
+                    # if we are here is because all of this is true:
+                    #   -- we are in the line for a new job, so we are done processing previous one
+                    #   -- there was an username associated to the previous job
+                    #   -- there was no final job status associated to the previous job
+                    # all of that means that the previous job crashed
+                    event.set("starttime", $starttimebackup[$source])
+                    event.set("jobid", $jobid[$source])
+                    event.set("submithost", $submithost[$source])
+                    event.set("user", $user[$source])
+                    event.set("status", "CRASHED")
+                    # we sent the event data to the output
+                else
+                    event.cancel
+                end
+                
+                $starttimebackup[$source] = $starttime[$source]
+
+
+            elsif event.get("submithost")
+                $submithost[$source] = event.get("submithost")
+                event.cancel
+
+            elsif event.get("jobid")
+                $jobid[$source] = event.get("jobid")
+                event.cancel
+
+            elsif event.get("user")
+                $user[$source] = event.get("user")
+                event.set("starttime", $starttime[$source])
                 event.set("jobid", $jobid[$source])
                 event.set("submithost", $submithost[$source])
                 event.set("user", $user[$source])
-                event.set("status", "CRASHED")
                 # we sent the event data to the output
+
+                $hasuser[$source] = true
+                $hasstatus[$source] = false
+
+
+            elsif event.get("status")
+                event.set("starttime", $starttime[$source])
+                event.set("jobid", $jobid[$source])
+                event.set("submithost", $submithost[$source])
+                event.set("user", $user[$source])
+                # we sent the event data to the output
+
+                $hasstatus[$source] = true
+
             else
                 event.cancel
             end
             
-            $starttimebackup[$source] = $starttime[$source]
-
-
-        elsif event.get("submithost")
-            $submithost[$source] = event.get("submithost")
-            event.cancel
-
-        elsif event.get("jobid")
-            $jobid[$source] = event.get("jobid")
-            event.cancel
-
-        elsif event.get("user")
-            $user[$source] = event.get("user")
-            event.set("starttime", $starttime[$source])
-            event.set("jobid", $jobid[$source])
-            event.set("submithost", $submithost[$source])
-            event.set("user", $user[$source])
-            # we sent the event data to the output
-
-            $hasuser[$source] = true
-            $hasstatus[$source] = false
-
-
-        elsif event.get("status")
-            event.set("starttime", $starttime[$source])
-            event.set("jobid", $jobid[$source])
-            event.set("submithost", $submithost[$source])
-            event.set("user", $user[$source])
-            # we sent the event data to the output
-
-            $hasstatus[$source] = true
-
-        else
-            event.cancel
-        end
-
-    '}
+        '
+    }
 
 
     mutate { add_field => { "executionhost" => "%{host[name]}" } }
