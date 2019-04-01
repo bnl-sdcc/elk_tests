@@ -13,8 +13,18 @@ filter {
             '^%{START_TIMESTAMP} Submitting machine is "%{HOSTNAME:submithost}"',
             '^%{START_TIMESTAMP} Starting a VANILLA universe job with ID: %{NUMBER:jobid}',
             '^%{START_TIMESTAMP} Running job as user %{WORD:user}',
-            '^%{START_TIMESTAMP:endtime} Notifying exit status=%{NUMBER:status} reason=%{NUMBER:reason}'
+            '^%{START_TIMESTAMP:endtime} Notifying exit status=%{NUMBER:status} reason=%{NUMBER:reason}',
+            '^%{START_TIMESTAMP:eventtimestamp}'
         ] }
+        break_on_match => false
+    }
+
+
+    date {
+        # convert the content of field "eventtimestamp" into a Timestamp object
+        # eventtimestamp looks like "03/29/19 15:08:08.841"
+        match => ["eventtimestamp", "MM/dd/yy HH:mm:ss.SSS"]
+        target => "eventtimestamp"
     }
 
     ruby { 
@@ -29,7 +39,13 @@ filter {
             $user = Hash.new
             $hasuser = Hash.new
             $hasstatus = Hash.new
+
+            # we need to discard too old events, 
+            # to avoid dumping too much data into into ElasticSearch
+            # initial value for a flag
+            $recentenough = false
         '
+
         code => '
 
             # log file name
@@ -37,62 +53,79 @@ filter {
             # to identify which line comes from each file and prevent mixing them
             $source = event.get("source")
 
-            if event.get("starttime")
+            # check if we can start processing events
+            # or they are still too old
+            # we check if the starting line for a new job 
+            # is younger than 10 days 
+            # we focus on that line in particular to avoid
+            # starting the processing in the middle of a running job
+            if (! $recentenough) && event.get("starttime")
+                if (Time.now.to_i - event.get("eventtimestamp").to_i) < 864000
+                    $recentenough = true
+                end
+            end
 
-                $starttime[$source] = event.get("starttime")
+            if ! $recentenough
+                event.cancel
+            elsif
 
-                if defined?($hasuser[$source]) && $hasstatus[$source] == false
-                    # if we are here is because all of this is true:
-                    #   -- we are in the line for a new job, so we are done processing previous one
-                    #   -- there was an username associated to the previous job
-                    #   -- there was no final job status associated to the previous job
-                    # all of that means that the previous job crashed
-                    event.set("starttime", $starttimebackup[$source])
+                if event.get("starttime")
+
+                    $starttime[$source] = event.get("starttime")
+
+                    if defined?($hasuser[$source]) && $hasstatus[$source] == false
+                        # if we are here is because all of this is true:
+                        #   -- we are in the line for a new job, so we are done processing previous one
+                        #   -- there was an username associated to the previous job
+                        #   -- there was no final job status associated to the previous job
+                        # all of that means that the previous job crashed
+                        event.set("starttime", $starttimebackup[$source])
+                        event.set("jobid", $jobid[$source])
+                        event.set("submithost", $submithost[$source])
+                        event.set("user", $user[$source])
+                        event.set("status", "CRASHED")
+                        # we sent the event data to the output
+                    else
+                        event.cancel
+                    end
+                    
+                    $starttimebackup[$source] = $starttime[$source]
+
+
+                elsif event.get("submithost")
+                    $submithost[$source] = event.get("submithost")
+                    event.cancel
+
+                elsif event.get("jobid")
+                    $jobid[$source] = event.get("jobid")
+                    event.cancel
+
+                elsif event.get("user")
+                    $user[$source] = event.get("user")
+                    event.set("starttime", $starttime[$source])
                     event.set("jobid", $jobid[$source])
                     event.set("submithost", $submithost[$source])
                     event.set("user", $user[$source])
-                    event.set("status", "CRASHED")
                     # we sent the event data to the output
+
+                    $hasuser[$source] = true
+                    $hasstatus[$source] = false
+
+
+                elsif event.get("status")
+                    event.set("starttime", $starttime[$source])
+                    event.set("jobid", $jobid[$source])
+                    event.set("submithost", $submithost[$source])
+                    event.set("user", $user[$source])
+                    # we sent the event data to the output
+
+                    $hasstatus[$source] = true
+
                 else
                     event.cancel
                 end
-                
-                $starttimebackup[$source] = $starttime[$source]
 
-
-            elsif event.get("submithost")
-                $submithost[$source] = event.get("submithost")
-                event.cancel
-
-            elsif event.get("jobid")
-                $jobid[$source] = event.get("jobid")
-                event.cancel
-
-            elsif event.get("user")
-                $user[$source] = event.get("user")
-                event.set("starttime", $starttime[$source])
-                event.set("jobid", $jobid[$source])
-                event.set("submithost", $submithost[$source])
-                event.set("user", $user[$source])
-                # we sent the event data to the output
-
-                $hasuser[$source] = true
-                $hasstatus[$source] = false
-
-
-            elsif event.get("status")
-                event.set("starttime", $starttime[$source])
-                event.set("jobid", $jobid[$source])
-                event.set("submithost", $submithost[$source])
-                event.set("user", $user[$source])
-                # we sent the event data to the output
-
-                $hasstatus[$source] = true
-
-            else
-                event.cancel
-            end
-            
+            end            
         '
     }
 
