@@ -1,7 +1,7 @@
 curl -X PUT "monitor01.sdcc.bnl.local:9210/starterlog-*/_mapping/logs" -H 'Content-Type: application/json' -d'
 {
   "properties": {
-    "username": { 
+    "user": { 
       "type":     "text",
       "fielddata": true
     },
