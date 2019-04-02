@@ -4,7 +4,7 @@
 input { 
     beats { 
         codec => json 
-        port => 5005
+        port => 5555
         ssl => true 
         ssl_certificate => "/etc/logstash/certs/lumberjack.cert" 
         ssl_key => "/etc/logstash/certs/lumberjack.key"
@@ -14,7 +14,8 @@ input {
 
 filter {
     mutate {
-        remove_field => [ "@timestamp", "@version", "tags" ]
+        #remove_field => [ "@timestamp", "@version", "tags" ]
+        remove_field => [ "@version", "tags" ]
     }
 }
 
@@ -22,7 +23,7 @@ filter {
 output {
     elasticsearch {
         hosts => [ "monitor01.sdcc.bnl.local:9210" ]
-        index => "jcaballero_test"
+        index => "starterlog-%{+YYYY.MM.dd}"
         document_id => "%{executionhost}_%{jobid}"
         action => "update"
         doc_as_upsert => true
