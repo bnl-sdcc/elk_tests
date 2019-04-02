@@ -13,10 +13,14 @@ filter {
             '^%{START_TIMESTAMP} Submitting machine is "%{HOSTNAME:submithost}"',
             '^%{START_TIMESTAMP} Starting a VANILLA universe job with ID: %{NUMBER:jobid}',
             '^%{START_TIMESTAMP} Running job as user %{WORD:user}',
-            '^%{START_TIMESTAMP:endtime} Notifying exit status=%{NUMBER:status} reason=%{NUMBER:reason}',
+            '^%{START_TIMESTAMP:endtime} Notifying exit status=%{NUMBER:status} reason=%{NUMBER:reason}'
+        ] }
+    }
+    grok {
+        pattern_definitions => { "START_TIMESTAMP" => "%{DATE_US} %{TIME}" }
+        match => { "message" => [
             '^%{START_TIMESTAMP:eventtimestamp}'
         ] }
-        break_on_match => false
     }
 
 
