@@ -63,11 +63,9 @@ filter {
             # is younger than 10 days 
             # we focus on that line in particular to avoid
             # starting the processing in the middle of a running job
-            if event.get("starttime")
+            if (! $recentenough[$source]) && event.get("starttime")
                 if (Time.now.to_i - event.get("eventtimestamp").to_i) < 864000
                     $recentenough[$source] = true
-                else
-                    $recentenough[$source] = false
                 end
             end
 
