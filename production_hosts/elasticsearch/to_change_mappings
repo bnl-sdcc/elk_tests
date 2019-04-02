@@ -36,6 +36,10 @@ curl -X PUT "monitor01.sdcc.bnl.local:9210/starterlog-*/_mapping/logs" -H 'Conte
     "reason": { 
       "type":     "text",
       "fielddata": true
+    }, 
+    "reason": { 
+      "type":     "text",
+      "logfile": true
     }
   }
 }
