@@ -134,11 +134,11 @@ filter {
     }
 
 
-    mutate { add_field => { "executionhost" => "%{host[name]}" } }
+    mutate { add_field => { "executionhost" => "%{[host][name]}" } }
 
     mutate {
         split => ["source", "/"]
-        add_field => { "logfile" => "%{source[-1]}"  }
+        add_field => { "logfile" => "%{[source][-1]}"  }
     }
 
 
