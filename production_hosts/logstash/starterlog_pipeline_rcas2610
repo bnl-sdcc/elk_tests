@@ -157,7 +157,7 @@ filter {
 output {
     lumberjack {
         codec => json
-        hosts => "monitor04.sdcc.bnl.local"
+        hosts => "************************"
         ssl_certificate => "/etc/logstash/certs/lumberjack.cert"
         port => 5555
     }

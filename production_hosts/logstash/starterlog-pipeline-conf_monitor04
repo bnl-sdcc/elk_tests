@@ -22,7 +22,7 @@ filter {
 
 output {
     elasticsearch {
-        hosts => [ "monitor01.sdcc.bnl.local:9210" ]
+        hosts => [ "************************:9210" ]
         index => "starterlog-%{+YYYY.MM.dd}"
         document_id => "%{executionhost}_%{jobid}"
         action => "update"
