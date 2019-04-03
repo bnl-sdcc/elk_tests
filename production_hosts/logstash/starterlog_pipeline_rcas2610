@@ -46,8 +46,25 @@ filter {
 
             # we need to discard too old events, 
             # to avoid dumping too much data into into ElasticSearch
-            # initial value for a flag
             $recentenough = Hash.new
+
+            # return codes
+            $codes = Hash.new
+            $codes[4] = "JOB_EXCEPTION: The job exited with an exception"
+            $codes[44] = "DPRINTF_ERROR: There is a fatal error with dprintf()"
+            $codes[100] = "JOB_EXITED: The job exited (not killed)"
+            $codes[101] = "JOB_CKPTED: The job was checkpointed"
+            $codes[102] = "JOB_KILLED: The job was killed"
+            $codes[103] = "JOB_COREDUMPED: The job was killed and a core file produced"
+            $codes[105] = "JOB_NO_MEM: Not enough memory to start the shadow"
+            $codes[106] = "JOB_SHADOW_USAGE: incorrect arguments to condor_shadow"
+            $codes[107] = "JOB_NOT_CKPTED: The job was kicked off without a checkpoint. JOB_SHOULD_REQUEUE: The effect of this exit code is that we want the job to be put back in the job queue and run again."
+            $codes[108] = "JOB_NOT_STARTED: Cannot connect to startd or request refused"
+            $codes[109] = "JOB_BAD_STATUS: Job status != RUNNING on startup"
+            $codes[110] = "JOB_EXEC_FAILED: failed for some reason other than ENOMEM"
+            $codes[111] = "JOB_NO_CKPT_FILE: There is no checkpoint file (lost)"
+            $codes[112] = "JOB_SHOULD_HOLD: job should be put on hold"
+            $codes[113] = "JOB_SHOULD_REMOVE: The job should be removed"
         '
 
         code => '
@@ -121,6 +138,11 @@ filter {
                     event.set("jobid", $jobid[$source])
                     event.set("submithost", $submithost[$source])
                     event.set("user", $user[$source])
+
+                    # add message
+                    msg = $codes[event.get("reason").to_i]
+                    event.set("explanation", msg)
+
                     # we sent the event data to the output
 
                     $hasstatus[$source] = true
@@ -143,7 +165,7 @@ filter {
 
 
     prune {
-        whitelist_names => ["jobid", "user", "submithost", "starttime", "endtime", "status", "reason", "executionhost", "logfile"]
+        whitelist_names => ["jobid", "user", "submithost", "starttime", "endtime", "status", "reason", "executionhost", "logfile", "explanation"]
     }
 
 }
