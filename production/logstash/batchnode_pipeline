@@ -6,6 +6,11 @@ input {
 
 filter {
 
+    # =========================================================================
+    #                           StarterLog
+    # =========================================================================
+
+
     if [fields][log_type] == "starterlog" {
 
         grok {
@@ -18,9 +23,12 @@ filter {
                 '^%{START_TIMESTAMP:endtime} Notifying exit status=%{NUMBER:status} reason=%{NUMBER:reason}',
                 '^%{START_TIMESTAMP:eventtimestamp}'
             ] }
+            # we do not break on match because 
+            # we need to keep matching even when the rule 
+            #    '^%{START_TIMESTAMP:eventtimestamp}'
+            # is true itself 
             break_on_match => false
         }
-
 
         date {
             # convert the content of field "eventtimestamp" into a Timestamp object
@@ -168,27 +176,26 @@ filter {
             whitelist_names => ["jobid", "user", "submithost", "starttime", "endtime", "status", "reason", "executionhost", "logfile", "explanation"]
         }
 
+
+    # =========================================================================
+    #                           startd_history 
+    # =========================================================================
+
     } else if [fields][log_type] == "history" {
 
         grok {
             pattern_definitions => { "END_OF_JOB" => "\*\*\* Offset" }
             match => { "message" => [
                 '^GlobalJobId = "%{GREEDYDATA:globaljobid}"',
-                '^JobStatus = %{NUMBER:jobstatus}',
                 '^RemoteUserCpu = %{NUMBER:cpu}',
                 '^EnteredCurrentStatus = %{NUMBER:currentstatus_timestamp}',
-                '^RemoteHost = "%{GREEDYDATA:remotehost}"',
                 '^JobStartDate = %{NUMBER:jobstarttime}',
                 '^%{END_OF_JOB:endofjob}'
             ] }
         }
 
         ruby { 
-            init => '
-                $end_of_job = false
-            '
             code => '
- 
                 if event.get("jobstarttime")
                     $starttime = Time.at(event.get("jobstarttime").to_i).strftime("%Y/%m/%d %H:%M:%S") 
                     event.cancel
@@ -198,9 +205,6 @@ filter {
                 elsif event.get("cpu")
                     $cpu = event.get("cpu")
                     event.cancel
-                elsif event.get("remotehost")
-                    $remotehost = event.get("remotehost")
-                    event.cancel
                 elsif event.get("currentstatus_timestamp")
                     $currentstatus_timestamp = event.get("currentstatus_timestamp")
                     event.cancel
@@ -208,7 +212,6 @@ filter {
                 if (Time.now.to_i - $currentstatus_timestamp.to_i) < 864000
                         event.set("globaljobid", $globaljobid)
                         event.set("cpu", $cpu)
-                        event.set("remotehost", $remotehost)
                         event.set("starttime", $starttime)
                     else
                         event.cancel
@@ -219,24 +222,9 @@ filter {
             '
         }
 
-
-        #   "hostname" => "slot3@spool0400.sdcc.bnl.gov"
-        #   "globaljobid" => "rcas6008.rcf.bnl.gov#11086498.0#1542273039",
-        mutate {
-            split => [ "remotehost", "@"]
-            add_field => { "executionhost" => "%{[remotehost][1]}"}
-        }
-        mutate {
-            split => [ "globaljobid", "#"]
-            add_field => { "jobid" => "%{[globaljobid][1]}"}
-            remove_field => [ "globaljobid" ]
-        }
-
         prune {
-            whitelist_names => ["jobid", "executionhost", "cpu", "starttime"]
+            whitelist_names => ["globaljobid", "cpu", "starttime"]
         }
-
-
 
     }
 
