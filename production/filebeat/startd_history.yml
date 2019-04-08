@@ -1,10 +1,10 @@
-# /etc/filebeat
-
 filebeat.inputs:
 - type: log
   paths:
-    - /var/log/condor/phenix/StarterLog.slot1
+    - /var/log/condor/sdcc/startd_history
+
+  fields: {log_type: history}
+
 output.logstash:
   hosts: ["localhost:5044"]
-
 
