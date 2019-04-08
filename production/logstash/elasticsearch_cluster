@@ -10,7 +10,6 @@ input {
 
 filter {
     mutate {
-        ###remove_field => [ "@timestamp", "@version", "tags" ]
         remove_field => [ "@version", "tags" ]
     }
 
@@ -42,8 +41,8 @@ filter {
 output {
     elasticsearch {
         hosts => [ "************************:9210" ]
-        index => "starterlog-%{+YYYY.MM.dd}"
-        document_id => "%{executionhost}_%{jobid}"
+        index => "%{index}"
+        document_id => "%{globaljobid}"
         action => "update"
         doc_as_upsert => true
 
