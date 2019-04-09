@@ -8,3 +8,8 @@ filebeat.inputs:
 output.logstash:
   hosts: ["localhost:5044"]
 
+# different location of the registry file
+# so it does not clash with the starterlog one      
+filebeat.registry_file: /var/lib/filebeat_history/registy
+filebeat.registry_file_permissions: 0600
+
