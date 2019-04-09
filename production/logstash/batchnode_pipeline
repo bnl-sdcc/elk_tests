@@ -197,7 +197,7 @@ filter {
         ruby { 
             code => '
                 if event.get("jobstarttime")
-                    $starttime = Time.at(event.get("jobstarttime").to_i).strftime("%Y/%m/%d %H:%M:%S") 
+                    $starttime = Time.at(event.get("jobstarttime").to_i).strftime("%m/%d/%y %H:%M:%S") 
                     event.cancel
                 elsif event.get("globaljobid")
                     $globaljobid = event.get("globaljobid")

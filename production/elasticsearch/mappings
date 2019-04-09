@@ -21,7 +21,15 @@ curl -X PUT "************************:9210/starterlog-*/_mapping/logs" -H 'Conte
       "type":     "text",
       "fielddata": true
     },
+    "globaljobid": { 
+      "type":     "text",
+      "fielddata": true
+    },
     "jobid": { 
+      "type":     "text",
+      "fielddata": true
+    },
+    "cpu": { 
       "type":     "text",
       "fielddata": true
     },
