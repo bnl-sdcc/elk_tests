@@ -1,3 +1,8 @@
+#
+#  this file goes under /etc/logstash/conf.d/
+#
+
+
 input {
     beats {
         port => "5044"
