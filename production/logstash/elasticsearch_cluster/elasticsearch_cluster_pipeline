@@ -1,5 +1,18 @@
 #
-# this files goes under /etc/logstash/conf.d/
+# LogStash pipeline as front end to the ElasticSearch cluster
+# This LogStash instance collects data from all other instances
+# at the batch nodes, aggregates the information, 
+# manipulates it a little bit, and sends the result to ElasticSearch
+#
+# This pipeline was written for LogStash 6.6.2
+#
+# This files goes under /etc/logstash/conf.d/
+#
+# Parameters for customization:
+#     - port, in the lumberjack input plugin
+#     - hosts, in the elasticsearch output plugin
+#
+# author: Jose Caballero <jcaballero@bnl.gov>
 #
 
 input {
@@ -17,6 +30,12 @@ filter {
         remove_field => [ "@version", "tags" ]
     }
 
+
+    # we build the ElasticSearch index based on the 
+    # day the job started, registered in the field "starttime"
+    # From a value like "01/08/19 08:42:54.288"
+    # we need to extract a string like "01.08.19"
+    # so index can be "htcondorjobs-01.08.19"
     mutate {
         copy => { "starttime" => "tmpindex" }
     }
@@ -34,7 +53,13 @@ filter {
         remove_field => [ "tmpindex" ]
     }
 
+
     # to assign the content of starttime to @timestamp
+    # in order to "Discover" data in ElasticSearch based on the date
+    # the job started, not when the data was dumped into ElasticSearch
+    # This is to avoid the many documents being recorded upon start 
+    # (corresponding to several days)
+    # to collapse Kibana
     date {
         match => [ "starttime" , "MM/dd/yy HH:mm:ss.SSS", "MM/dd/yy HH:mm:ss" ]
     }
