@@ -34,6 +34,11 @@ filter {
         remove_field => [ "tmpindex" ]
     }
 
+    # to assign the content of starttime to @timestamp
+    date {
+        match => [ "starttime" , "MM/dd/yy HH:mm:ss.SSS", "MM/dd/yy HH:mm:ss" ]
+    }
+
 
 }
 
