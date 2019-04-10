@@ -1,6 +1,21 @@
 #
-#  this file goes under /etc/logstash/conf.d/
+# LogStash pipeline for the HTCondor batch nodes
+# This LogStash instance collects data from FileBeat,
+# manipulates it, and sends to the LogStash in front of ElasticSearch
 #
+# This pipeline was written for LogStash 6.6.2
+#
+# This files goes under /etc/logstash/conf.d/
+#
+# Parameters for customization:
+#     - port, in the beats input plugin
+#     - number of seconds to reject too old data
+#     - hosts, in the lumberjack output plugin
+#
+# author: Jose Caballero <jcaballero@bnl.gov>
+#
+
+
 
 
 input {
@@ -13,6 +28,9 @@ filter {
 
     # =========================================================================
     #                           StarterLog
+    # -------------------------------------------------------------------------
+    # here we process the events from the StarterLog.slot1_* files
+    # FileBeat marks these Events with extra field "log_type" = "starterlog"
     # =========================================================================
 
 
@@ -59,7 +77,7 @@ filter {
                 # to avoid dumping too much data into into ElasticSearch
                 $recentenough_h = Hash.new
 
-                # return codes 
+                # explanation for return codes, as it is written in the HTCondor manual
                 $codes = Hash.new
                 $codes[4] = "JOB_EXCEPTION: The job exited with an exception"
                 $codes[44] = "DPRINTF_ERROR: There is a fatal error with dprintf()"
@@ -80,7 +98,7 @@ filter {
 
             code => '
 
-                # log file name
+                # log filename
                 # we will use it as key in several dictionaries
                 # to identify which line comes from each file and prevent mixing them
                 $source = event.get("source")
@@ -91,18 +109,17 @@ filter {
                 # is younger than 10 days 
                 # we focus on that line in particular to avoid
                 # starting the processing in the middle of a running job
-
                 if (! $recentenough_h[$source] ) && event.get("starttime")
-
                     if (Time.now.to_i - event.get("eventtimestamp").to_i) < 864000
                         $recentenough_h[$source] = true
                     end
                 end
-
                 if ! $recentenough_h[$source]
                     event.cancel
                 elsif
 
+                    # data is recent enough for processing...
+                    
                     if event.get("starttime")
 
                         $starttime_h[$source] = event.get("starttime")
@@ -127,10 +144,12 @@ filter {
 
 
                     elsif event.get("submithost")
+                        # we record the value of submithost. It will be used later on, together with other fields
                         $submithost_h[$source] = event.get("submithost")
                         event.cancel
 
                     elsif event.get("jobid")
+                        # we record the value of jobid. It will be used later on, together with other fields
                         $jobid_h[$source] = event.get("jobid")
                         event.cancel
 
@@ -152,7 +171,7 @@ filter {
                         event.set("submithost", $submithost_h[$source])
                         event.set("user", $user_h[$source])
 
-                        # add message
+                        # add explanatory message for return codes
                         msg = $codes[event.get("reason").to_i]
                         event.set("explanation", msg)
 
@@ -169,8 +188,11 @@ filter {
         }
 
 
-        mutate { add_field => { "executionhost" => "%{[host][name]}" } }
+        mutate { 
+            add_field => { "executionhost" => "%{[host][name]}" } 
+        }
 
+        # we add the logfile as a new field. But only the filename, not entire path
         mutate {
             split => ["source", "/"]
             add_field => { "logfile" => "%{[source][-1]}"  } 
@@ -183,6 +205,9 @@ filter {
 
     # =========================================================================
     #                           startd_history 
+    # -------------------------------------------------------------------------
+    # here we process the events from the startd_history file
+    # FileBeat marks these Events with extra field "log_type" = "history"
     # =========================================================================
 
     } else if [fields][log_type] == "history" {
