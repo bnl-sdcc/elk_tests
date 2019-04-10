@@ -216,7 +216,7 @@ filter {
             pattern_definitions => { "END_OF_JOB" => "\*\*\* Offset" }
             match => { "message" => [
                 '^GlobalJobId = "%{GREEDYDATA:globaljobid}"',
-                '^RemoteUserCpu = %{NUMBER:cpu}',
+                '^RemoteUserCpu = %{NUMBER:remoteusercpu}',
                 '^EnteredCurrentStatus = %{NUMBER:currentstatus_timestamp}',
                 '^JobStartDate = %{NUMBER:jobstarttime}',
                 '^%{END_OF_JOB:endofjob}'
@@ -231,8 +231,8 @@ filter {
                 elsif event.get("globaljobid")
                     $globaljobid = event.get("globaljobid")
                     event.cancel
-                elsif event.get("cpu")
-                    $cpu = event.get("cpu")
+                elsif event.get("remoteusercpu")
+                    $remoteusercpu = event.get("remoteusercpu")
                     event.cancel
                 elsif event.get("currentstatus_timestamp")
                     $currentstatus_timestamp = event.get("currentstatus_timestamp")
@@ -240,7 +240,7 @@ filter {
                 elsif event.get("endofjob")
                 if (Time.now.to_i - $currentstatus_timestamp.to_i) < 864000
                         event.set("globaljobid", $globaljobid)
-                        event.set("cpu", $cpu)
+                        event.set("remoteusercpu", $remoteusercpu)
                         event.set("starttime", $starttime)
                     else
                         event.cancel
@@ -252,7 +252,7 @@ filter {
         }
 
         prune {
-            whitelist_names => ["globaljobid", "cpu", "starttime"]
+            whitelist_names => ["globaljobid", "remoteusercpu", "starttime"]
         }
 
     }
