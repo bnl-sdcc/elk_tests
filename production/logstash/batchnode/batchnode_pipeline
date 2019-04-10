@@ -47,18 +47,17 @@ filter {
             init => '
                 # Before anything else, we create the dictionaries (empty)
                 # to host all relevant variables
-                $starttime = Hash.new
-                $starttimebackup = Hash.new
-                $jobid = Hash.new
-                $submithost = Hash.new
-                $user = Hash.new
-                $hasuser = Hash.new
-                $hasstatus = Hash.new
-                $recentenough = Hash.new
+                $starttime_h = Hash.new
+                $starttimebackup_h = Hash.new
+                $jobid_h = Hash.new
+                $submithost_h = Hash.new
+                $user_h = Hash.new
+                $hasuser_h = Hash.new
+                $hasstatus_h = Hash.new
 
                 # we need to discard too old events, 
                 # to avoid dumping too much data into into ElasticSearch
-                $recentenough = Hash.new
+                $recentenough_h = Hash.new
 
                 # return codes 
                 $codes = Hash.new
@@ -93,65 +92,65 @@ filter {
                 # we focus on that line in particular to avoid
                 # starting the processing in the middle of a running job
 
-                if (! $recentenough[$source] ) && event.get("starttime")
+                if (! $recentenough_h[$source] ) && event.get("starttime")
 
                     if (Time.now.to_i - event.get("eventtimestamp").to_i) < 864000
-                        $recentenough[$source] = true
+                        $recentenough_h[$source] = true
                     end
                 end
 
-                if ! $recentenough[$source]
+                if ! $recentenough_h[$source]
                     event.cancel
                 elsif
 
                     if event.get("starttime")
 
-                        $starttime[$source] = event.get("starttime")
+                        $starttime_h[$source] = event.get("starttime")
 
-                        if defined?($hasuser[$source]) && $hasstatus[$source] == false
+                        if defined?($hasuser_h[$source]) && $hasstatus_h[$source] == false
                             # if we are here is because all of this is true:
                             #   -- we are in the line for a new job, so we are done processing previous one
                             #   -- there was an username associated to the previous job
                             #   -- there was no final job status associated to the previous job
                             # all of that means that the previous job crashed
-                            event.set("starttime", $starttimebackup[$source])
-                            event.set("jobid", $jobid[$source])
-                            event.set("submithost", $submithost[$source])
-                            event.set("user", $user[$source])
+                            event.set("starttime", $starttimebackup_h[$source])
+                            event.set("jobid", $jobid_h[$source])
+                            event.set("submithost", $submithost_h[$source])
+                            event.set("user", $user_h[$source])
                             event.set("status", "CRASHED")
                             # we sent the event data to the output
                         else
                             event.cancel
                         end
                         
-                        $starttimebackup[$source] = $starttime[$source]
+                        $starttimebackup_h[$source] = $starttime_h[$source]
 
 
                     elsif event.get("submithost")
-                        $submithost[$source] = event.get("submithost")
+                        $submithost_h[$source] = event.get("submithost")
                         event.cancel
 
                     elsif event.get("jobid")
-                        $jobid[$source] = event.get("jobid")
+                        $jobid_h[$source] = event.get("jobid")
                         event.cancel
 
                     elsif event.get("user")
-                        $user[$source] = event.get("user")
-                        event.set("starttime", $starttime[$source])
-                        event.set("jobid", $jobid[$source])
-                        event.set("submithost", $submithost[$source])
-                        event.set("user", $user[$source])
+                        $user_h[$source] = event.get("user")
+                        event.set("starttime", $starttime_h[$source])
+                        event.set("jobid", $jobid_h[$source])
+                        event.set("submithost", $submithost_h[$source])
+                        event.set("user", $user_h[$source])
                         # we sent the event data to the output
 
-                        $hasuser[$source] = true
-                        $hasstatus[$source] = false
+                        $hasuser_h[$source] = true
+                        $hasstatus_h[$source] = false
 
 
                     elsif event.get("status")
-                        event.set("starttime", $starttime[$source])
-                        event.set("jobid", $jobid[$source])
-                        event.set("submithost", $submithost[$source])
-                        event.set("user", $user[$source])
+                        event.set("starttime", $starttime_h[$source])
+                        event.set("jobid", $jobid_h[$source])
+                        event.set("submithost", $submithost_h[$source])
+                        event.set("user", $user_h[$source])
 
                         # add message
                         msg = $codes[event.get("reason").to_i]
@@ -159,7 +158,7 @@ filter {
 
                         # we sent the event data to the output
 
-                        $hasstatus[$source] = true
+                        $hasstatus_h[$source] = true
 
                     else
                         event.cancel
