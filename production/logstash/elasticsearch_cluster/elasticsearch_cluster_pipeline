@@ -28,7 +28,7 @@ filter {
         gsub => [ "index", "/", "." ]
     }
     mutate {
-        replace => { "index" => "starterlog-%{index}" }
+        replace => { "index" => "htcondorjobs-%{index}" }
     }
     mutate {
         remove_field => [ "tmpindex" ]
