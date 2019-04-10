@@ -1,0 +1,15 @@
+filebeat.inputs:
+
+- type: log
+  paths:
+    - /var/log/condor/sdcc/startd_history
+  fields: {log_type: history} 
+
+- type: log
+  paths:
+    - /var/log/condor/sdcc/StarterLog.slot1_*
+  fields: {log_type: starterlog} 
+
+output.logstash:
+  hosts: ["localhost:5044"]
+
