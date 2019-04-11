@@ -238,7 +238,7 @@ filter {
                     $currentstatus_timestamp = event.get("currentstatus_timestamp")
                     event.cancel
                 elsif event.get("endofjob")
-                if (Time.now.to_i - $currentstatus_timestamp.to_i) < (3600*24*10)
+                    if (Time.now.to_i - $currentstatus_timestamp.to_i) < (3600*24*10)
                         event.set("globaljobid", $globaljobid)
                         event.set("remoteusercpu", $remoteusercpu)
                         event.set("starttime", $starttime)
