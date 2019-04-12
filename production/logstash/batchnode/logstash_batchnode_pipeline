@@ -207,7 +207,17 @@ filter {
         }
 
         prune {
-            whitelist_names => ["globaljobid", "jobid", "user", "submithost", "starttime", "endtime", "status", "reason", "executionhost", "logfile", "explanation"]
+            whitelist_names => ["globaljobid", 
+                                "jobid", 
+                                "user", 
+                                "submithost", 
+                                "starttime", 
+                                "endtime", 
+                                "status", 
+                                "reason", 
+                                "executionhost", 
+                                "logfile", 
+                                "explanation"]
         }
 
 
@@ -260,7 +270,9 @@ filter {
         }
 
         prune {
-            whitelist_names => ["globaljobid", "remoteusercpu", "starttime"]
+            whitelist_names => ["globaljobid", 
+                                "remoteusercpu", 
+                                "starttime"]
         }
 
     }
