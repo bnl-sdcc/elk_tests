@@ -41,6 +41,7 @@ filter {
             match => { "message" => [
                 '^%{START_TIMESTAMP:starttime} \*\* PID = ',
                 '^%{START_TIMESTAMP} Submitting machine is "%{HOSTNAME:submithost}"',
+                '^GlobalJobId = "%{GREEDYDATA:globaljobid}"',
                 '^%{START_TIMESTAMP} Starting a VANILLA universe job with ID: %{NUMBER:jobid}',
                 '^%{START_TIMESTAMP} Running job as user %{WORD:user}',
                 '^%{START_TIMESTAMP:endtime} Notifying exit status=%{NUMBER:status} reason=%{NUMBER:reason}',
@@ -67,6 +68,7 @@ filter {
                 # to host all relevant variables
                 $starttime_h = Hash.new
                 $starttimebackup_h = Hash.new
+                $globaljobid_h = Hash.new
                 $jobid_h = Hash.new
                 $submithost_h = Hash.new
                 $user_h = Hash.new
@@ -148,6 +150,10 @@ filter {
                         $submithost_h[$source] = event.get("submithost")
                         event.cancel
 
+                    elsif event.get("globaljobid")
+                        $globaljobid_h[$source] = event.get("globaljobid")
+                        event.cancel
+
                     elsif event.get("jobid")
                         # we record the value of jobid. It will be used later on, together with other fields
                         $jobid_h[$source] = event.get("jobid")
@@ -156,6 +162,7 @@ filter {
                     elsif event.get("user")
                         $user_h[$source] = event.get("user")
                         event.set("starttime", $starttime_h[$source])
+                        event.set("globaljobid", $globaljobid_h[$source])
                         event.set("jobid", $jobid_h[$source])
                         event.set("submithost", $submithost_h[$source])
                         event.set("user", $user_h[$source])
@@ -167,6 +174,7 @@ filter {
 
                     elsif event.get("status")
                         event.set("starttime", $starttime_h[$source])
+                        event.set("globaljobid", $globaljobid_h[$source])
                         event.set("jobid", $jobid_h[$source])
                         event.set("submithost", $submithost_h[$source])
                         event.set("user", $user_h[$source])
@@ -199,7 +207,7 @@ filter {
         }
 
         prune {
-            whitelist_names => ["jobid", "user", "submithost", "starttime", "endtime", "status", "reason", "executionhost", "logfile", "explanation"]
+            whitelist_names => ["globaljobid", "jobid", "user", "submithost", "starttime", "endtime", "status", "reason", "executionhost", "logfile", "explanation"]
         }
 
 
