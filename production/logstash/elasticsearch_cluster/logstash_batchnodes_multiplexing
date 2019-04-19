@@ -30,12 +30,6 @@ filter {
         remove_field => [ "@version", "tags" ]
     }
 
-
-    # we build the ElasticSearch index based on the 
-    # day the job started, registered in the field "starttime"
-    # From a value like "01/08/19 08:42:54.288"
-    # we need to extract a string like "01.08.19"
-    # so index can be "htcondorjobs-01.08.19"
     #mutate {
     #    copy => { "starttime" => "tmpindex" }
     #}
@@ -55,6 +49,11 @@ filter {
 
     ruby {
         code => '
+           # convert starttime to index
+           # starttime has formats
+           #    - 01/08/19 08:42:54
+           #    - 01/08/19 08:42:54.345
+           # index has format "htcondorjobs-<YYYY.MM.DD>"
            date = Date.strptime(event.get("starttime"), "%m/%d/%y %H:%M:%S").strftime("%Y.%m.%d")
            event.set("index", "htcondorjobs-" + date)
         '
