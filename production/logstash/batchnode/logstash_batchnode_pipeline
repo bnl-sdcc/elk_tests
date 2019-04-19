@@ -134,6 +134,7 @@ filter {
                             # all of that means that the previous job crashed
                             event.set("starttime", $starttimebackup_h[$source])
                             event.set("jobid", $jobid_h[$source])
+                            event.set("globaljobid", $globaljobid_h[$source])
                             event.set("submithost", $submithost_h[$source])
                             event.set("user", $user_h[$source])
                             event.set("status", "CRASHED")
@@ -151,6 +152,7 @@ filter {
                         event.cancel
 
                     elsif event.get("globaljobid")
+                        # we record the value of globaljobid. It will be used later on, together with other fields
                         $globaljobid_h[$source] = event.get("globaljobid")
                         event.cancel
 

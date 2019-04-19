@@ -36,21 +36,30 @@ filter {
     # From a value like "01/08/19 08:42:54.288"
     # we need to extract a string like "01.08.19"
     # so index can be "htcondorjobs-01.08.19"
-    mutate {
-        copy => { "starttime" => "tmpindex" }
-    }
-    mutate {
-        split => ["tmpindex", " "]
-        add_field => { "index" => "%{[tmpindex][0]}" }
-    }
-    mutate {
-        gsub => [ "index", "/", "." ]
+    #mutate {
+    #    copy => { "starttime" => "tmpindex" }
+    #}
+    #mutate {
+    #    split => ["tmpindex", " "]
+    #    add_field => { "index" => "%{[tmpindex][0]}" }
+    #}
+    #mutate {
+    #    gsub => [ "index", "/", "." ]
+    #}
+    #mutate {
+    #    replace => { "index" => "htcondorjobs-%{index}" }
+    #}
+    #mutate {
+    #    remove_field => [ "tmpindex" ]
+    #}
+
+    ruby {
+        code => '
+           event.set("index", Date.strptime(event.get("starttime"), "%m/%d/%y %H:%M:%S").strftime("%Y.%m.%d"))
+        '
     }
     mutate {
         replace => { "index" => "htcondorjobs-%{index}" }
-    }
-    mutate {
-        remove_field => [ "tmpindex" ]
     }
 
 
@@ -79,7 +88,6 @@ output {
         document_id => "%{globaljobid}"
         action => "update"
         doc_as_upsert => true
-
     } 
 }
 
