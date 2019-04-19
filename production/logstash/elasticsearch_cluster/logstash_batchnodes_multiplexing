@@ -55,11 +55,9 @@ filter {
 
     ruby {
         code => '
-           event.set("index", Date.strptime(event.get("starttime"), "%m/%d/%y %H:%M:%S").strftime("%Y.%m.%d"))
+           date = Date.strptime(event.get("starttime"), "%m/%d/%y %H:%M:%S").strftime("%Y.%m.%d")
+           event.set("index", "htcondorjobs-" + date)
         '
-    }
-    mutate {
-        replace => { "index" => "htcondorjobs-%{index}" }
     }
 
 
