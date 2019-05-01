@@ -1,4 +1,4 @@
-curl -X PUT "************************:9210/starterlog-*/_mapping/logs" -H 'Content-Type: application/json' -d'
+curl -X PUT "************************:9210/htcondorjobs-*/_mapping/logs" -H 'Content-Type: application/json' -d'
 {
   "properties": {
     "user": { 
