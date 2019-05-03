@@ -29,7 +29,7 @@ curl -X PUT "************************:9210/htcondorjobs-*/_mapping/logs" -H 'Con
       "type":     "text",
       "fielddata": true
     },
-    "cpu": { 
+    "remoteusercpu": { 
       "type":     "text",
       "fielddata": true
     },
