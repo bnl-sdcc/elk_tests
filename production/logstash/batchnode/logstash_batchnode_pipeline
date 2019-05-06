@@ -236,7 +236,7 @@ filter {
             pattern_definitions => { "END_OF_JOB" => "\*\*\* Offset" }
             match => { "message" => [
                 '^GlobalJobId = "%{GREEDYDATA:globaljobid}"',
-                '^RemoteUserCpu = %{NUMBER:remoteusercpu}',
+                '^RemoteUserCpu = %{NUMBER:remoteusercpu:float}',
                 '^EnteredCurrentStatus = %{NUMBER:currentstatus_timestamp}',
                 '^JobStartDate = %{NUMBER:jobstarttime}',
                 '^%{END_OF_JOB:endofjob}'
