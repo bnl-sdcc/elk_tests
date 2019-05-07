@@ -7,7 +7,7 @@ filebeat.inputs:
 
 - type: log
   paths:
-    - /var/log/condor/sdcc/StarterLog.slot1_*
+    - /var/log/condor/sdcc/StarterLog.slot*_*
   fields: {log_type: starterlog} 
 
 output.logstash:
