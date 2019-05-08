@@ -56,6 +56,9 @@ filter {
            # index has format "htcondorjobs-<YYYY.MM.DD>"
            date = Date.strptime(event.get("starttime"), "%m/%d/%y %H:%M:%S").strftime("%Y.%m.%d")
            event.set("index", "htcondorjobs-" + date)
+
+           # document_id has format <globaljobid>_<trial>
+           event.set("document_id", event.get("globaljobid") + "_" + event.get("trial").to_s)
         '
     }
 
@@ -82,7 +85,7 @@ output {
     elasticsearch {
         hosts => [ "************************:9210" ]
         index => "%{index}"
-        document_id => "%{globaljobid}"
+        document_id => "%{document_id}"
         action => "update"
         doc_as_upsert => true
     } 

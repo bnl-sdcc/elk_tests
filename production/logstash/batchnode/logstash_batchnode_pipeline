@@ -42,6 +42,7 @@ filter {
                 '^%{START_TIMESTAMP:starttime} \*\* PID = ',
                 '^%{START_TIMESTAMP} Submitting machine is "%{HOSTNAME:submithost}"',
                 '^GlobalJobId = "%{GREEDYDATA:globaljobid}"',
+                '^NumShadowStarts = %{NUMBER:trial:int}',
                 '^%{START_TIMESTAMP} Starting a VANILLA universe job with ID: %{NUMBER:jobid}',
                 '^%{START_TIMESTAMP} Running job as user %{WORD:user}',
                 '^%{START_TIMESTAMP:endtime} Notifying exit status=%{NUMBER:status} reason=%{NUMBER:reason}',
@@ -69,6 +70,7 @@ filter {
                 $starttime_h = Hash.new
                 $starttimebackup_h = Hash.new
                 $globaljobid_h = Hash.new
+                $trial_h = Hash.new
                 $jobid_h = Hash.new
                 $submithost_h = Hash.new
                 $user_h = Hash.new
@@ -135,6 +137,7 @@ filter {
                             event.set("starttime", $starttimebackup_h[$source])
                             event.set("jobid", $jobid_h[$source])
                             event.set("globaljobid", $globaljobid_h[$source])
+                            event.set("trial", $trial_h[$source])
                             event.set("submithost", $submithost_h[$source])
                             event.set("user", $user_h[$source])
                             event.set("status", "CRASHED")
@@ -156,6 +159,11 @@ filter {
                         $globaljobid_h[$source] = event.get("globaljobid")
                         event.cancel
 
+                    elsif event.get("trial")
+                        # we record the value of trial. It will be used later on, together with other fields
+                        $trial_h[$source] = event.get("trial")
+                        event.cancel
+
                     elsif event.get("jobid")
                         # we record the value of jobid. It will be used later on, together with other fields
                         $jobid_h[$source] = event.get("jobid")
@@ -165,6 +173,7 @@ filter {
                         $user_h[$source] = event.get("user")
                         event.set("starttime", $starttime_h[$source])
                         event.set("globaljobid", $globaljobid_h[$source])
+                        event.set("trial", $trial_h[$source])
                         event.set("jobid", $jobid_h[$source])
                         event.set("submithost", $submithost_h[$source])
                         event.set("user", $user_h[$source])
@@ -177,6 +186,7 @@ filter {
                     elsif event.get("status")
                         event.set("starttime", $starttime_h[$source])
                         event.set("globaljobid", $globaljobid_h[$source])
+                        event.set("trial", $trial_h[$source])
                         event.set("jobid", $jobid_h[$source])
                         event.set("submithost", $submithost_h[$source])
                         event.set("user", $user_h[$source])
@@ -210,6 +220,7 @@ filter {
 
         prune {
             whitelist_names => ["globaljobid", 
+                                "trial", 
                                 "jobid", 
                                 "user", 
                                 "submithost", 
@@ -236,6 +247,7 @@ filter {
             pattern_definitions => { "END_OF_JOB" => "\*\*\* Offset" }
             match => { "message" => [
                 '^GlobalJobId = "%{GREEDYDATA:globaljobid}"',
+                '^NumShadowStarts = %{NUMBER:trial:int}',
                 '^RemoteUserCpu = %{NUMBER:remoteusercpu:float}',
                 '^EnteredCurrentStatus = %{NUMBER:currentstatus_timestamp}',
                 '^JobStartDate = %{NUMBER:jobstarttime}',
@@ -251,6 +263,9 @@ filter {
                 elsif event.get("globaljobid")
                     $globaljobid = event.get("globaljobid")
                     event.cancel
+                elsif event.get("trial")
+                    $trial = event.get("trial")
+                    event.cancel
                 elsif event.get("remoteusercpu")
                     $remoteusercpu = event.get("remoteusercpu")
                     event.cancel
@@ -260,6 +275,7 @@ filter {
                 elsif event.get("endofjob")
                     if (Time.now.to_i - $currentstatus_timestamp.to_i) < (3600*24*10)
                         event.set("globaljobid", $globaljobid)
+                        event.set("trial", $trial)
                         event.set("remoteusercpu", $remoteusercpu)
                         event.set("starttime", $starttime)
                     else
@@ -273,6 +289,7 @@ filter {
 
         prune {
             whitelist_names => ["globaljobid", 
+                                "trial", 
                                 "remoteusercpu", 
                                 "starttime"]
         }
