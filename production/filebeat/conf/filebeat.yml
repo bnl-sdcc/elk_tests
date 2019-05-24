@@ -4,12 +4,16 @@ filebeat.inputs:
   paths:
     - /var/log/condor/sdcc/startd_history
   fields: {log_type: history} 
+  include_lines: ['^\*\*\* Offset', '^GlobalJobId', '^NumShadowStarts', '^RemoteUserCpu', '^RemoteSysCpu', '^RemoteWallClockTime', '^EnteredCurrentStatus', '^CpusProvisioned', '^JobStartDate']
+
 
 - type: log
   paths:
-    - /var/log/condor/sdcc/StarterLog.slot*_*
+    - /var/log/condor/sdcc/StarterLog.slot*
   fields: {log_type: starterlog} 
+  include_lines: ['\*\* PID =', 'Running job as user', '^GlobalJobId', '^NumShadowStarts', 'Submitting machine is', 'Starting a VANILLA universe job with ID', 'Running job as user', 'Notifying exit status']
+
 
 output.logstash:
-  hosts: ["localhost:5044"]
+  hosts: ["remotehost:5000"]
 
