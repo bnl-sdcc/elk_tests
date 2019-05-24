@@ -70,7 +70,7 @@ filter {
     # (corresponding to several days)
     # to collapse Kibana
     date {
-        match => [ "starttime" , "MM/dd/yy HH:mm:ss.SSS", "MM/dd/yy HH:mm:ss" ]
+        match => [ "starttime" , "MM/dd/yy HH:mm:ss.SSS", "MM/dd/yy HH:mm:ss", "MM/dd/yy HH:mm:ss.1000"]
     }
 
 
