@@ -1,0 +1,397 @@
+#
+# LogStash pipeline for the HTCondor batch nodes
+# This LogStash instance collects data from FileBeat,
+# manipulates it, and sends to the LogStash in front of ElasticSearch
+#
+# This pipeline was written for LogStash 6.6.2
+#
+# This files goes under /etc/logstash/conf.d/
+#
+# Parameters for customization:
+#     - port, in the beats input plugin
+#     - number of seconds to reject too old data
+#     - hosts, in the lumberjack output plugin
+#
+# author: Jose Caballero <jcaballero@bnl.gov>
+#
+
+
+
+
+input {
+    beats {
+        port => "5044"
+    }
+}
+
+filter {
+
+    # =========================================================================
+    #                           StarterLog
+    # -------------------------------------------------------------------------
+    # here we process the events from the StarterLog.slot1_* files
+    # FileBeat marks these Events with extra field "log_type" = "starterlog"
+    # =========================================================================
+    
+
+
+    if [fields][log_type] == "starterlog" {
+
+        # we add the logfile as a new field. But only the filename, not entire path
+        mutate {
+            split => ["source", "/"]
+            add_field => { "logfile" => "%{[source][-1]}"  } 
+            add_field => { "origin" => "%{logfile}@%{[beat][hostname]}"  }
+        }
+    
+        grok {
+            pattern_definitions => { "START_TIMESTAMP" => "%{DATE_US} %{TIME}" }
+            match => { "message" => [
+                '^%{START_TIMESTAMP:starttime} \*\* PID = ',
+                '^%{START_TIMESTAMP} Submitting machine is "%{HOSTNAME:submithost}"',
+                '^GlobalJobId = "%{GREEDYDATA:globaljobid}"',
+                '^NumShadowStarts = %{NUMBER:trial:int}',
+                '^%{START_TIMESTAMP} Starting a VANILLA universe job with ID: %{NUMBER:jobid}',
+                '^%{START_TIMESTAMP} Running job as user %{WORD:user}',
+                '^%{START_TIMESTAMP:endtime} Notifying exit status=%{NUMBER:status} reason=%{NUMBER:reason}',
+                '^%{START_TIMESTAMP:eventtimestamp}'
+
+                # =============================================================
+                #
+                #       I M P O R T A N T     N O T E
+                #
+                # =============================================================
+                #
+                #      every pattern included in Grok filter
+                #      must be added also to variable 
+                #               include_lines
+                #      in filebeat.yml
+                #
+                # =============================================================
+
+            ] }
+            # we do not break on match because 
+            # we need to keep matching even when the rule 
+            #    '^%{START_TIMESTAMP:eventtimestamp}'
+            # is true itself 
+            break_on_match => false
+        }
+
+
+        date {
+            # convert the content of field "eventtimestamp" into a Timestamp object
+            # eventtimestamp looks like "03/29/19 15:08:08.841"
+            match => ["eventtimestamp", "MM/dd/yy HH:mm:ss.SSS"]
+            target => "eventtimestamp"
+        }
+
+        ruby { 
+
+            init => '
+                # Before anything else, we create the dictionaries (empty)
+                # to host all relevant variables
+                $starttime_h = Hash.new
+                $starttimebackup_h = Hash.new
+                $globaljobid_h = Hash.new
+                $trial_h = Hash.new
+                $jobid_h = Hash.new
+                $submithost_h = Hash.new
+                $user_h = Hash.new
+                $hasuser_h = Hash.new
+                $hasstatus_h = Hash.new
+
+                # we need to discard too old events, 
+                # to avoid dumping too much data into into ElasticSearch
+                $recentenough_h = Hash.new
+
+                # explanation for return codes, as it is written in the HTCondor manual
+                $codes = Hash.new
+                $codes[4] = "JOB_EXCEPTION: The job exited with an exception"
+                $codes[44] = "DPRINTF_ERROR: There is a fatal error with dprintf()"
+                $codes[100] = "JOB_EXITED: The job exited (not killed)"
+                $codes[101] = "JOB_CKPTED: The job was checkpointed"
+                $codes[102] = "JOB_KILLED: The job was killed"
+                $codes[103] = "JOB_COREDUMPED: The job was killed and a core file produced"
+                $codes[105] = "JOB_NO_MEM: Not enough memory to start the shadow"
+                $codes[106] = "JOB_SHADOW_USAGE: incorrect arguments to condor_shadow"
+                $codes[107] = "JOB_NOT_CKPTED: The job was kicked off without a checkpoint. JOB_SHOULD_REQUEUE: The effect of this exit code is that we want the job to be put back in the job queue and run again."
+                $codes[108] = "JOB_NOT_STARTED: Cannot connect to startd or request refused"
+                $codes[109] = "JOB_BAD_STATUS: Job status != RUNNING on startup"
+                $codes[110] = "JOB_EXEC_FAILED: failed for some reason other than ENOMEM"
+                $codes[111] = "JOB_NO_CKPT_FILE: There is no checkpoint file (lost)"
+                $codes[112] = "JOB_SHOULD_HOLD: job should be put on hold"
+                $codes[113] = "JOB_SHOULD_REMOVE: The job should be removed"
+            '
+
+            code => '
+
+                # log filename
+                # we will use it as key in several dictionaries
+                # to identify which line comes from each file and prevent mixing them
+                $source = event.get("source")
+                $origin = event.get("origin")
+
+                # check if we can start processing events
+                # or they are still too old
+                # we check if the starting line for a new job 
+                # is younger than N days 
+                # we focus on that line in particular to avoid
+                # starting the processing in the middle of a running job
+                if (! $recentenough_h[$origin] ) && event.get("starttime")
+                    if (Time.now.to_i - event.get("eventtimestamp").to_i) < (3600*24*1000)
+                        $recentenough_h[$origin] = true
+                    end
+                end
+                if ! $recentenough_h[$origin]
+                    event.cancel
+                elsif
+
+                    # data is recent enough for processing...
+                    
+                    if event.get("starttime")
+
+                        $starttime_h[$origin] = event.get("starttime")
+
+                        if defined?($hasuser_h[$origin]) && $hasstatus_h[$origin] == false
+                            # if we are here is because all of this is true:
+                            #   -- we are in the line for a new job, so we are done processing previous one
+                            #   -- there was an username associated to the previous job
+                            #   -- there was no final job status associated to the previous job
+                            # all of that means that the previous job crashed
+                            event.set("starttime", $starttimebackup_h[$origin])
+                            event.set("globaljobid", $globaljobid_h[$origin])
+                            event.set("trial", $trial_h[$origin])
+                            event.set("jobid", $jobid_h[$origin])
+                            event.set("submithost", $submithost_h[$origin])
+                            event.set("user", $user_h[$origin])
+                            event.set("status", "CRASHED")
+                            # we sent the event data to the output
+                        else
+                            event.cancel
+                        end
+                        
+                        $starttimebackup_h[$origin] = $starttime_h[$origin]
+
+
+                    elsif event.get("submithost")
+                        # we record the value of submithost. It will be used later on, together with other fields
+                        $submithost_h[$origin] = event.get("submithost")
+                        event.cancel
+
+                    elsif event.get("globaljobid")
+                        # we record the value of globaljobid. It will be used later on, together with other fields
+                        $globaljobid_h[$origin] = event.get("globaljobid")
+                        event.cancel
+
+                    elsif event.get("trial")
+                        # we record the value of trial. It will be used later on, together with other fields
+                        $trial_h[$origin] = event.get("trial")
+                        event.cancel
+
+                    elsif event.get("jobid")
+                        # we record the value of jobid. It will be used later on, together with other fields
+                        $jobid_h[$origin] = event.get("jobid")
+                        event.cancel
+
+                    elsif event.get("user")
+                        $user_h[$origin] = event.get("user")
+                        event.set("starttime", $starttime_h[$origin])
+                        event.set("globaljobid", $globaljobid_h[$origin])
+                        event.set("trial", $trial_h[$origin])
+                        event.set("jobid", $jobid_h[$origin])
+                        event.set("submithost", $submithost_h[$origin])
+                        event.set("user", $user_h[$origin])
+                        # we sent the event data to the output
+
+                        $hasuser_h[$origin] = true
+                        $hasstatus_h[$origin] = false
+
+
+                    elsif event.get("status")
+                        event.set("starttime", $starttime_h[$origin])
+                        event.set("globaljobid", $globaljobid_h[$origin])
+                        event.set("trial", $trial_h[$origin])
+                        event.set("jobid", $jobid_h[$origin])
+                        event.set("submithost", $submithost_h[$origin])
+                        event.set("user", $user_h[$origin])
+
+                        # add explanatory message for return codes
+                        msg = $codes[event.get("reason").to_i]
+                        event.set("explanation", msg)
+
+                        # we sent the event data to the output
+
+                        $hasstatus_h[$origin] = true
+
+                    else
+                        event.cancel
+                    end
+
+                end            
+            '
+        }
+
+
+        mutate { 
+            add_field => { "executionhost" => "%{[host][name]}" } 
+        }
+
+
+        prune {
+            whitelist_names => ["globaljobid", 
+                                "trial", 
+                                "jobid", 
+                                "user", 
+                                "submithost", 
+                                "starttime", 
+                                "endtime", 
+                                "status", 
+                                "reason", 
+                                "executionhost", 
+                                "logfile", 
+                                "explanation"]
+        }
+
+
+    # =========================================================================
+    #                           startd_history 
+    # -------------------------------------------------------------------------
+    # here we process the events from the startd_history file
+    # FileBeat marks these Events with extra field "log_type" = "history"
+    # =========================================================================
+
+    } else if [fields][log_type] == "history" {
+
+        # we add the logfile as a new field. But only the filename, not entire path
+        mutate {
+            split => ["source", "/"]
+            add_field => { "origin" => "%{[source][-1]}@%{[beat][hostname]}"  }
+        }
+
+        grok {
+            pattern_definitions => { "END_OF_JOB" => "\*\*\* Offset" }
+            match => { "message" => [
+                '^GlobalJobId = "%{GREEDYDATA:globaljobid}"',
+                '^NumShadowStarts = %{NUMBER:trial:int}',
+                '^RemoteUserCpu = %{NUMBER:remoteusercpu:float}',
+                '^RemoteSysCpu = %{NUMBER:remotesyscpu:float}',
+                '^RemoteWallClockTime = %{NUMBER:remotewallclocktime:float}',
+                '^EnteredCurrentStatus = %{NUMBER:currentstatus_timestamp:float}',
+                '^CpusProvisioned = %{NUMBER:cpus:int}',
+                '^JobStartDate = %{NUMBER:jobstarttime}',
+                '^%{END_OF_JOB:endofjob}'
+
+
+                # =============================================================
+                #
+                #       I M P O R T A N T     N O T E
+                #
+                # =============================================================
+                #
+                #      every pattern included in Grok filter
+                #      must be added also to variable 
+                #               include_lines
+                #      in filebeat.yml
+                #
+                # =============================================================
+                
+            ] }
+        }
+
+        ruby { 
+
+        init => '
+                $starttime_h = Hash.new
+                $globaljobid_h = Hash.new
+                $trial_h = Hash.new
+                $starttime_h = Hash.new
+                $remoteusercpu_h = Hash.new
+                $remotesyscpu_h = Hash.new
+                $remotewallclocktime_h = Hash.new
+                $currentstatus_timestamp_h = Hash.new
+        $cpus_h = Hash.new
+            '
+
+            code => '
+                $origin = event.get("origin")
+
+                if event.get("jobstarttime")
+                    $starttime = Time.at(event.get("jobstarttime").to_i).strftime("%m/%d/%y %H:%M:%S") 
+                    $starttime_h[$origin] = $starttime
+                    event.cancel
+                elsif event.get("globaljobid")
+                    $globaljobid = event.get("globaljobid")
+                    $globaljobid_h[$origin] = $globaljobid
+                    event.cancel
+                elsif event.get("trial")
+                    $trial = event.get("trial")
+                    $trial_h[$origin] = $trial
+                    event.cancel
+                elsif event.get("remoteusercpu")
+                    $remoteusercpu = event.get("remoteusercpu")
+                    $remoteusercpu_h[$origin] = $remoteusercpu
+                    event.cancel
+                elsif event.get("remotesyscpu")
+                    $remotesyscpu = event.get("remotesyscpu")
+                    $remotesyscpu_h[$origin] = $remotesyscpu
+                    event.cancel
+                elsif event.get("remotewallclocktime")
+                    $remotewallclocktime = event.get("remotewallclocktime")
+                    $remotewallclocktime_h[$origin] = $remotewallclocktime
+                    event.cancel
+                elsif event.get("currentstatus_timestamp")
+                    $currentstatus_timestamp = event.get("currentstatus_timestamp")
+                    $currentstatus_timestamp_h[$origin] = $currentstatus_timestamp
+                    event.cancel
+                elsif event.get("cpus")
+                    $cpus = event.get("cpus")
+                    $cpus_h[$origin] = $cpus
+                    event.cancel
+                elsif event.get("endofjob")
+                    if (Time.now.to_i - $currentstatus_timestamp_h[$origin].to_i) < (3600*24*1000)
+                        event.set("globaljobid", $globaljobid_h[$origin])
+                        event.set("trial", $trial_h[$origin])
+                        event.set("starttime", $starttime_h[$origin])
+                        event.set("remoteusercpu", $remoteusercpu_h[$origin])
+                        event.set("remotesyscpu", $remotesyscpu_h[$origin])
+                        event.set("remotewallclocktime", $remotewallclocktime_h[$origin])
+                        event.set("eff", ($remoteusercpu_h[$origin] + $remotesyscpu_h[$origin])/($remotewallclocktime_h[$origin] * $cpus) )
+                    else
+                        event.cancel
+                    end
+                else
+                    event.cancel          
+                end
+            '
+        }
+
+        prune {
+            whitelist_names => ["globaljobid", 
+                                "trial", 
+                                "remoteusercpu", 
+                                "remotesyscpu", 
+                                "remotewallclocktime", 
+                                "eff",
+                                "starttime"]
+        }
+
+    }
+
+}
+
+
+#output {
+#    stdout { codec => rubydebug }
+#}
+
+output {
+    lumberjack {
+        codec => json
+        hosts => "*********"
+        ssl_certificate => "/etc/logstash/certs/lumberjack.cert"
+        port => 5555
+    }
+}
+
+
+

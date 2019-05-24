@@ -1,0 +1,10 @@
+#
+# this file goes to /etc/logstash/logstash.yml
+#
+
+path.data: /var/lib/logstash
+path.logs: /var/log/logstash
+log.level: debug
+#path.config: /etc/logstash/conf.d/
+pipeline.workers: 1
+
