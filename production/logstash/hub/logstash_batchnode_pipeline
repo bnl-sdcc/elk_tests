@@ -138,7 +138,7 @@ filter {
                 # we focus on that line in particular to avoid
                 # starting the processing in the middle of a running job
                 if (! $recentenough_h[$origin] ) && event.get("starttime")
-                    if (Time.now.to_i - event.get("eventtimestamp").to_i) < (3600*24*1000)
+                    if (Time.now.to_i - event.get("eventtimestamp").to_i) < (3600*24*10)
                         $recentenough_h[$origin] = true
                     end
                 end
@@ -348,7 +348,7 @@ filter {
                     $cpus_h[$origin] = $cpus
                     event.cancel
                 elsif event.get("endofjob")
-                    if (Time.now.to_i - $currentstatus_timestamp_h[$origin].to_i) < (3600*24*1000)
+                    if (Time.now.to_i - $currentstatus_timestamp_h[$origin].to_i) < (3600*24*10)
                         event.set("globaljobid", $globaljobid_h[$origin])
                         event.set("trial", $trial_h[$origin])
                         event.set("starttime", $starttime_h[$origin])
