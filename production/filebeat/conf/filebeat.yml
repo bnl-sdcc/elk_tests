@@ -15,5 +15,5 @@ filebeat.inputs:
 
 
 output.logstash:
-  hosts: ["remotehost:5000"]
+  hosts: ["*************:5000"]
 
