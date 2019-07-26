@@ -1,4 +1,4 @@
-curl -X PUT "xxxxxxxx:9210/_template/template_1" -H 'Content-Type: application/json' -d'
+curl -X PUT "xxxxxxxx:9210/_template/htcondorjobs" -H 'Content-Type: application/json' -d'
 {
   "template": "htcondorjobs-*",
   "mappings": {
