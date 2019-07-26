@@ -1,0 +1,15 @@
+curl -X PUT "xxxxxxxx:9210/_template/template_1" -H 'Content-Type: application/json' -d'
+{
+  "template": "htcondorjobs-*",
+  "mappings": {
+     "logs" : {
+        "properties": {
+          "user": {
+            "type": "keyword"
+        }
+       }
+    }
+  }
+}
+'
+
