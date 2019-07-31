@@ -1,15 +1,76 @@
 curl -X PUT "xxxxxxxx:9210/_template/htcondorjobs" -H 'Content-Type: application/json' -d'
 {
-  "template": "htcondorjobs-*",
-  "mappings": {
-     "logs" : {
-        "properties": {
-          "user": {
-            "type": "keyword"
+    "template": "htcondorjobs-*",
+
+    "settings": {
+        "index": {
+            "number_of_shards": "2",
+            "number_of_replicas": "1"
         }
-       }
+    },
+
+
+    "mappings": {
+        "logs" : {
+            "properties": {
+                "user": {
+                    "type": "keyword"
+                },
+                "executionhost": {
+                    "type": "keyword"
+                },
+                "submithost": {
+                    "type": "keyword"
+                }, 
+                "globaljobid": {
+                    "type": "keyword"
+                }, 
+                "jobid": {
+                    "type": "keyword"
+                }, 
+                "logfile": {
+                    "type": "keyword"
+                }, 
+                "jobid": {
+                    "type": "keyword"
+                }, 
+                "globaljobid": {
+                    "type": "keyword"
+                }, 
+                "explanation": {
+                    "type": "keyword"
+                }, 
+
+                "status": {
+                    "type": "integer"
+                }, 
+                "reason": {
+                    "type": "integer"
+                }, 
+                "trial": {
+                    "type": "integer"
+                }, 
+
+                "remotesyscpu": {
+                    "type": "integer"
+                }, 
+                "remoteusercpu": {
+                    "type": "integer"
+                }, 
+                "remotewallclocktime": {
+                    "type": "integer"
+                }, 
+                "eff": {
+                    "type": "float"
+                } 
+
+            }
+        }
     }
-  }
 }
 '
+
+
+
+
 
