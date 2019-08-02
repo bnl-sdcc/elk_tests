@@ -45,6 +45,13 @@ curl -X PUT "xxxxxxxx:9210/_template/htcondorjobs" -H 'Content-Type: application
                     "type": "integer"
                 }, 
 
+                "starttime": {
+                    "type": "date",
+                },
+                "endtime": {
+                    "type": "date",
+                },
+
                 "remotesyscpu": {
                     "type": "integer"
                 }, 
