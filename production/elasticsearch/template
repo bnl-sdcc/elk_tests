@@ -47,11 +47,11 @@ curl -X PUT "xxxxxxxx:9210/_template/htcondorjobs" -H 'Content-Type: application
 
                 "starttime": {
                     "type": "date",
-                    "format": "MM/dd/yy HH:mm:ss||MM/dd/yy HH:mm:ss.SSS||MM/dd/yy HH:mm:ss.1000"
+                    "format": "MM/dd/yy HH:mm:ss||MM/dd/yy HH:mm:ss.SSS||MM/dd/yy HH:mm:ss.1000||yyyy-MM-dd'"'T'"'HH:mm:ss.SSS'"'Z'""
                 },
                 "endtime": {
                     "type": "date",
-                    "format": "MM/dd/yy HH:mm:ss||MM/dd/yy HH:mm:ss.SSS||MM/dd/yy HH:mm:ss.1000"
+                    "format": "MM/dd/yy HH:mm:ss||MM/dd/yy HH:mm:ss.SSS||MM/dd/yy HH:mm:ss.1000||yyyy-MM-dd'"'T'"'HH:mm:ss.SSS'"'Z'""
                 },
 
                 "remotesyscpu": {
